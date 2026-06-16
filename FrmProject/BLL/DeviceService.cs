@@ -32,9 +32,24 @@ namespace FrmProject.BLL
             int borrowedQuantity,
             int availableQuantity,
             string status,
-            string note) =>
+            string note)
+        {
+            if (string.IsNullOrWhiteSpace(deviceName))
+                throw new ArgumentException("Tên thiết bị không được để trống.");
+            if (string.IsNullOrWhiteSpace(deviceCode))
+                throw new ArgumentException("Mã thiết bị không được để trống.");
+            if (totalQuantity < 0)
+                throw new ArgumentException("Tổng số lượng không được nhỏ hơn 0.");
+            if (borrowedQuantity < 0)
+                throw new ArgumentException("Số lượng đang mượn không được nhỏ hơn 0.");
+            if (availableQuantity < 0)
+                throw new ArgumentException("Số lượng có sẵn không được nhỏ hơn 0.");
+            if (availableQuantity + borrowedQuantity > totalQuantity)
+                throw new ArgumentException("Tổng số lượng có sẵn và đang mượn không được vượt quá tổng số lượng thực tế.");
+
             _deviceRepository.SaveDevice(deviceId, deviceCode, deviceName, categoryName, roomNameOrCode,
                 totalQuantity, borrowedQuantity, availableQuantity, status, note);
+        }
 
         public void DeleteDevice(int deviceId) => _deviceRepository.DeleteDevice(deviceId);
 
