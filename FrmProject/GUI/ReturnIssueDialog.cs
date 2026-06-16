@@ -75,12 +75,17 @@ namespace FrmProject.GUI
             if (!table.Columns.Contains("Ghi chú"))
                 table.Columns.Add("Ghi chú", typeof(string));
 
-            if (table.Columns.Contains("SL trả"))
-                table.Columns["SL trả"].ReadOnly = false;
-            if (table.Columns.Contains("Tình trạng khi trả"))
-                table.Columns["Tình trạng khi trả"].ReadOnly = false;
-            if (table.Columns.Contains("Ghi chú"))
-                table.Columns["Ghi chú"].ReadOnly = false;
+            var colSlTra = table.Columns["SL trả"];
+            if (colSlTra != null)
+                colSlTra.ReadOnly = false;
+
+            var colTinhTrang = table.Columns["Tình trạng khi trả"];
+            if (colTinhTrang != null)
+                colTinhTrang.ReadOnly = false;
+
+            var colGhiChu = table.Columns["Ghi chú"];
+            if (colGhiChu != null)
+                colGhiChu.ReadOnly = false;
 
             foreach (DataRow row in table.Rows)
             {

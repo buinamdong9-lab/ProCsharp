@@ -118,7 +118,7 @@ namespace FrmProject.GUI
                 comboBox1.Items.Clear();
                 comboBox1.Items.Add("-- Tất cả loại --");
                 foreach (DataRow row in dt.Rows)
-                    comboBox1.Items.Add(row["CategoryName"].ToString());
+                    comboBox1.Items.Add(row["CategoryName"]?.ToString() ?? string.Empty);
                 comboBox1.SelectedIndex = 0;
             }
             catch (Exception ex) { AppLogger.Error($"[UcThietbi] Lỗi LoadComboBoxLoai", ex); }
