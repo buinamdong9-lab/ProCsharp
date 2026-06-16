@@ -134,5 +134,39 @@ namespace FrmProject.DAL
                 throw;
             }
         }
+
+        public void ApproveBorrow(int ticketId)
+        {
+            using SqlConnection conn = DbHelper.GetConnection();
+            conn.Execute(
+                "sp_ApproveBorrowTicket",
+                new
+                {
+                    ticketId,
+                    pendingStatus = BorrowTicketStatus.Pending,
+                    borrowingStatus = BorrowTicketStatus.Borrowing,
+                    maintenanceStatus = DeviceStatus.Maintenance,
+                    retiredStatus = DeviceStatus.Retired,
+                    availableStatus = DeviceStatus.Available,
+                    borrowedStatus = DeviceStatus.Borrowed,
+                    goodCondition = DeviceCondition.Good
+                },
+                commandType: CommandType.StoredProcedure);
+        }
+
+        public void RejectBorrow(int ticketId, string reason)
+        {
+            using SqlConnection conn = DbHelper.GetConnection();
+            conn.Execute(
+                "sp_RejectBorrowTicket",
+                new
+                {
+                    ticketId,
+                    rejectedStatus = BorrowTicketStatus.Rejected,
+                    pendingStatus = BorrowTicketStatus.Pending,
+                    reason
+                },
+                commandType: CommandType.StoredProcedure);
+        }
     }
 }

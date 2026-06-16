@@ -141,5 +141,73 @@ namespace FrmProject.DAL
                 throw;
             }
         }
+
+        public void ApproveReturn(int ticketId, int approvedByUserId)
+        {
+            using SqlConnection conn = DbHelper.GetConnection();
+            conn.Execute(
+                "sp_ApproveReturnRequest",
+                new
+                {
+                    ticketId,
+                    approvedByUserId,
+                    returnPendingStatus = BorrowTicketStatus.ReturnPending,
+                    returnedStatus = BorrowTicketStatus.Returned,
+                    borrowingStatus = BorrowTicketStatus.Borrowing,
+                    retiredStatus = DeviceStatus.Retired,
+                    availableStatus = DeviceStatus.Available,
+                    maintenanceStatus = DeviceStatus.Maintenance,
+                    goodCondition = DeviceCondition.Good
+                },
+                commandType: CommandType.StoredProcedure);
+        }
+
+        public void RejectReturn(int ticketId, string reason)
+        {
+            using SqlConnection conn = DbHelper.GetConnection();
+            conn.Execute(
+                "sp_RejectReturnRequest",
+                new
+                {
+                    ticketId,
+                    borrowingStatus = BorrowTicketStatus.Borrowing,
+                    returnPendingStatus = BorrowTicketStatus.ReturnPending,
+                    reason
+                },
+                commandType: CommandType.StoredProcedure);
+        }
+
+        public DataTable GetPendingReturnTickets()
+        {
+            using SqlConnection conn = DbHelper.GetConnection();
+            DataTable dt = new DataTable();
+            dt.Load(conn.ExecuteReader(
+                "sp_GetPendingReturnTickets",
+                new { status = BorrowTicketStatus.ReturnPending },
+                commandType: CommandType.StoredProcedure));
+            return dt;
+        }
+
+        public string GetTicketStatus(SqlConnection conn, SqlTransaction? tran, int ticketId)
+        {
+            return conn.ExecuteScalar<string>(
+                "sp_GetTicketStatus",
+                new { ticketId },
+                transaction: tran,
+                commandType: CommandType.StoredProcedure) ?? string.Empty;
+        }
+
+        public void VerifyTicketOwnership(SqlConnection conn, SqlTransaction tran, int ticketId, int userId)
+        {
+            int? ownerUserId = conn.QueryFirstOrDefault<int?>(
+                "sp_GetTicketOwnerId",
+                new { ticketId },
+                transaction: tran,
+                commandType: CommandType.StoredProcedure);
+            if (ownerUserId == null)
+                throw new InvalidOperationException("Phiếu mượn không tồn tại.");
+            if (ownerUserId.Value != userId)
+                throw new InvalidOperationException("Bạn không có quyền thao tác trên phiếu này.");
+        }
     }
 }

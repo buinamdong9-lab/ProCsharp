@@ -68,6 +68,8 @@ namespace FrmProject.DAL
         List<LookupItem> GetBorrowableDevices();
         List<LookupItem> GetAvailableInstances(int deviceId);
         int CreatePendingTicket(BorrowTicketDraft draft);
+        void ApproveBorrow(int ticketId);
+        void RejectBorrow(int ticketId, string reason);
     }
 
     public interface IReturnTicketRepository
@@ -77,6 +79,11 @@ namespace FrmProject.DAL
         void ApplyPendingReturnQuantities(int ticketId, DataTable dt);
         bool TryLoadPendingReturnRequest(int ticketId, out DateTime requestedAt, out List<ReturnRequestItem> pendingItems);
         void SubmitReturnRequest(int ticketId, int currentUserId, AppRole appRole, DateTime requestedAt, List<(int DeviceID, int InstanceID, int BorrowQty, int ReturnQty, string Note)> returnItems, string requestNote);
+        void ApproveReturn(int ticketId, int approvedByUserId);
+        void RejectReturn(int ticketId, string reason);
+        DataTable GetPendingReturnTickets();
+        string GetTicketStatus(SqlConnection conn, SqlTransaction? tran, int ticketId);
+        void VerifyTicketOwnership(SqlConnection conn, SqlTransaction tran, int ticketId, int userId);
     }
 
     public interface ISettingsRepository

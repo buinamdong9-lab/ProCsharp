@@ -82,7 +82,6 @@ namespace FrmProject.BLL
     {
         void ApproveReturn(int ticketId, int approvedByUserId);
         void RejectReturn(int ticketId, string reason);
-        void VerifyTicketOwnership(SqlConnection conn, SqlTransaction tran, int ticketId, int userId);
         DataTable GetPendingReturnTickets();
     }
 
