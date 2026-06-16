@@ -6,6 +6,8 @@ namespace FrmProject
 {
     public partial class UcNguoidung : UserControl
     {
+        private IUserService UserService => AppServiceProvider.Get<IUserService>();
+
         // ═══ Trạng thái chọn dòng ═══
         private int _selectedUserID = -1;
         private bool _isAdding;
@@ -90,7 +92,7 @@ namespace FrmProject
             try
             {
                 // 1. Đếm tổng (để tính số trang)
-                int total  = UserRepository.GetTotalUsersCount(_keyword, _role, _status);
+                int total  = UserService.GetTotalUsersCount(_keyword, _role, _status);
                 _totalPages = Math.Max(1, (int)Math.Ceiling((double)total / PageSize));
 
                 // Đảm bảo trang hiện tại không vượt
@@ -98,7 +100,7 @@ namespace FrmProject
                 if (_currentPage < 1)           _currentPage = 1;
 
                 // 2. Lấy dữ liệu trang hiện tại
-                DataTable dt = UserRepository.GetUsersPaged(
+                DataTable dt = UserService.GetUsersPaged(
                     _currentPage, PageSize, _keyword, _role, _status);
 
                 dgvNguoiDung.DataSource          = dt;
@@ -145,7 +147,7 @@ namespace FrmProject
 
             try
             {
-                var identity = UserRepository.FindUserIdentity(
+                var identity = UserService.FindUserIdentity(
                     txtMaNguoiDung.Text.Trim(), "");
                 if (identity != null)
                 {
@@ -178,7 +180,7 @@ namespace FrmProject
             txtMaNguoiDung.ReadOnly = true; // Auto-generated
             try
             {
-                txtMaNguoiDung.Text = UserRepository.GenerateUserCode();
+                txtMaNguoiDung.Text = UserService.GenerateUserCode();
             }
             catch { /* Ignore in design time or initial fail */ }
             txtHoTen.Focus();
@@ -211,7 +213,7 @@ namespace FrmProject
 
             try
             {
-                UserRepository.DeleteUser(_selectedUserID);
+                UserService.DeleteUser(_selectedUserID);
                 MessageBox.Show("Đã xóa mềm người dùng thành công!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearForm();
@@ -269,7 +271,7 @@ namespace FrmProject
                         : PasswordHelper.HashPassword(txtMatKhau.Text.Trim())
                 };
 
-                UserRepository.SaveUser(user, isAdding);
+                UserService.SaveUser(user, isAdding);
                 MessageBox.Show(isAdding ? "Thêm thành công!" : "Cập nhật thành công!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -301,7 +303,7 @@ namespace FrmProject
 
             try
             {
-                UserRepository.ResetPassword(_selectedUserID, PasswordHelper.HashPassword(newPass));
+                UserService.ResetPassword(_selectedUserID, PasswordHelper.HashPassword(newPass));
                 MessageBox.Show("Đã đặt lại mật khẩu thành công.", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }

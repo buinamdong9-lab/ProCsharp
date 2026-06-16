@@ -1,10 +1,11 @@
-using FrmProject.DAL;
 using System.Data;
 
 namespace FrmProject.GUI
 {
     public partial class UcRecycleBin : UserControl
     {
+        private IRecycleBinService RecycleBinService => AppServiceProvider.Get<IRecycleBinService>();
+
         public UcRecycleBin()
         {
             InitializeComponent();
@@ -29,7 +30,7 @@ namespace FrmProject.GUI
             {
                 string itemType = cboLoai.Text;
                 string keyword = txtTimKiem.Text.Trim();
-                DataTable table = RecycleBinRepository.Load(itemType, keyword);
+                DataTable table = RecycleBinService.Load(itemType, keyword);
                 dgvRecycleBin.DataSource = table;
                 ConfigureGrid();
                 lblTong.Text = $"Tổng: {table.Rows.Count}";
@@ -69,7 +70,7 @@ namespace FrmProject.GUI
 
             try
             {
-                RecycleBinRepository.Restore(itemType, itemId);
+                RecycleBinService.Restore(itemType, itemId);
                 MessageBox.Show("Khôi phục thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
             }
@@ -93,7 +94,7 @@ namespace FrmProject.GUI
 
             try
             {
-                RecycleBinRepository.DeleteForever(itemType, itemId);
+                RecycleBinService.DeleteForever(itemType, itemId);
                 MessageBox.Show("Đã xóa vĩnh viễn!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
             }

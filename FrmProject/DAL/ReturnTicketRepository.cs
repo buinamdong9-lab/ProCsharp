@@ -1,110 +1,61 @@
 using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Linq;
+using System.Collections.Generic;
+using Dapper;
+using FrmProject.Models;
 
 namespace FrmProject.DAL
 {
-    internal static class ReturnTicketRepository
+    public class ReturnTicketRepository : IReturnTicketRepository
     {
-        public static List<LookupItem> SearchBorrowingTickets(int currentUserId, AppRole appRole, string keyword = "")
+        private readonly IReturnRequestRepository _returnRequestRepository;
+
+        public ReturnTicketRepository(IReturnRequestRepository returnRequestRepository)
+        {
+            _returnRequestRepository = returnRequestRepository;
+        }
+        public List<LookupItem> SearchBorrowingTickets(int currentUserId, AppRole appRole, string keyword = "")
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            conn.Open();
-            string ticketDisplayExpr = DbSchemaHelper.GetBorrowTicketDisplayExpression(conn, "bt");
-            bool hasTicketCode = DbSchemaHelper.HasColumn(conn, "BorrowTickets", "TicketCode");
-            string searchCondition = string.Empty;
-
-            if (!string.IsNullOrWhiteSpace(keyword))
-            {
-                searchCondition = hasTicketCode
-                    ? " AND (CONVERT(VARCHAR, bt.TicketID) LIKE @kw OR bt.TicketCode LIKE @kw OR u.FullName LIKE @kw)"
-                    : " AND (CONVERT(VARCHAR, bt.TicketID) LIKE @kw OR u.FullName LIKE @kw)";
-            }
-
-            using var cmd = new SqlCommand(
-                $@"SELECT bt.TicketID, {ticketDisplayExpr} + ' - ' + u.FullName + ' (' + 
-                   CONVERT(VARCHAR, bt.BorrowDate, 103) + ')'
-                   FROM BorrowTickets bt
-                   JOIN Users u ON u.UserID = bt.UserID
-                   WHERE {DbSchemaHelper.BuildActiveBorrowStatusCondition("bt")}
-                     AND (@isUser = 0 OR bt.UserID = @userId)
-                     {searchCondition}
-                   ORDER BY bt.BorrowDate DESC", conn);
-            cmd.Parameters.AddWithValue("@isUser", appRole == AppRole.User ? 1 : 0);
-            cmd.Parameters.AddWithValue("@userId", currentUserId);
-            if (!string.IsNullOrWhiteSpace(keyword))
-                cmd.Parameters.AddWithValue("@kw", $"%{keyword}%");
-
-            List<LookupItem> tickets = new();
-            using SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read())
-                tickets.Add(new LookupItem(reader.GetInt32(0), reader.GetString(1)));
-
-            return tickets;
+            return conn.Query(
+                "sp_SearchBorrowingTickets",
+                new
+                {
+                    userId = currentUserId,
+                    isUser = appRole == AppRole.User ? 1 : 0,
+                    keyword = string.IsNullOrWhiteSpace(keyword) ? null : keyword
+                },
+                commandType: CommandType.StoredProcedure)
+                .Select(row => new LookupItem((int)row.TicketID, (string)row.DisplayText))
+                .ToList();
         }
 
-        public static ReturnTicketDetails? GetTicketDetails(int ticketId)
+        public ReturnTicketDetails? GetTicketDetails(int ticketId)
         {
             using SqlConnection conn = DbHelper.GetConnection();
             conn.Open();
-            string ticketDisplayExpr = DbSchemaHelper.GetBorrowTicketDisplayExpressionForCast(conn, "bt");
-            string returnNoteExpr = DbSchemaHelper.HasColumn(conn, "BorrowTickets", "ReturnNote")
-                ? "bt.ReturnNote"
-                : "CAST(NULL AS NVARCHAR(MAX))";
 
-            ReturnTicketDetails? details = null;
-            using (var cmd = new SqlCommand(
-                $@"SELECT {ticketDisplayExpr}, u.FullName, bt.BorrowDate, bt.ExpectedReturnDate, bt.Status, {returnNoteExpr}
-                   FROM BorrowTickets bt
-                   JOIN Users u ON u.UserID = bt.UserID
-                   WHERE bt.TicketID = @id", conn))
-            {
-                cmd.Parameters.AddWithValue("@id", ticketId);
-                using SqlDataReader reader = cmd.ExecuteReader();
-                if (reader.Read())
-                {
-                    details = new ReturnTicketDetails
-                    {
-                        TicketDisplay = reader.GetString(0),
-                        BorrowerName = reader.GetString(1),
-                        BorrowDate = reader.GetDateTime(2),
-                        ExpectedReturnDate = reader.GetDateTime(3),
-                        Status = reader.GetString(4),
-                        ReturnNote = reader.IsDBNull(5) ? string.Empty : reader.GetString(5)
-                    };
-                }
-            }
+            ReturnTicketDetails? details = conn.QueryFirstOrDefault<ReturnTicketDetails>(
+                "sp_GetReturnTicketDetails",
+                new { id = ticketId },
+                commandType: CommandType.StoredProcedure);
 
             if (details == null)
                 return null;
 
-            string query = @"
-                SELECT bd.DeviceID,
-                       bd.InstanceID,
-                       di.AssetCode AS [Mã tài sản],
-                       d.DeviceName AS [Tên thiết bị],
-                       (bd.Quantity - bd.ReturnedQuantity) AS [SL mượn],
-                       (bd.Quantity - bd.ReturnedQuantity) AS [SL trả],
-                       ISNULL(NULLIF(di.Condition, ''), N'Tốt') AS [Tình trạng khi mượn],
-                       N'Tốt' AS [Tình trạng khi trả],
-                       ISNULL(bd.Note, '') AS [Ghi chú]
-                FROM BorrowDetails bd
-                JOIN Devices d ON d.DeviceID = bd.DeviceID
-                LEFT JOIN DeviceInstances di ON di.InstanceID = bd.InstanceID
-                WHERE bd.TicketID = @id AND bd.Quantity > bd.ReturnedQuantity";
-
-            using var da = new SqlDataAdapter(query, conn);
-            da.SelectCommand.Parameters.AddWithValue("@id", ticketId);
             DataTable dt = new();
-            da.Fill(dt);
+            dt.Load(conn.ExecuteReader("sp_GetReturnTicketItems", new { id = ticketId }, commandType: CommandType.StoredProcedure));
             details.Items = dt;
+
             return details;
         }
 
-        public static void ApplyPendingReturnQuantities(int ticketId, DataTable dt)
+        public void ApplyPendingReturnQuantities(int ticketId, DataTable dt)
         {
             using SqlConnection conn = DbHelper.GetConnection();
             conn.Open();
-            if (!ReturnRequestRepository.TryLoadRequest(conn, null, ticketId, out _, out List<ReturnRequestItem> pendingItems))
+            if (!_returnRequestRepository.TryLoadRequest(conn, null, ticketId, out _, out List<ReturnRequestItem> pendingItems))
                 return;
 
             foreach (DataRow row in dt.Rows)
@@ -127,14 +78,14 @@ namespace FrmProject.DAL
             }
         }
 
-        public static bool TryLoadPendingReturnRequest(int ticketId, out DateTime requestedAt, out List<ReturnRequestItem> pendingItems)
+        public bool TryLoadPendingReturnRequest(int ticketId, out DateTime requestedAt, out List<ReturnRequestItem> pendingItems)
         {
             using SqlConnection conn = DbHelper.GetConnection();
             conn.Open();
-            return ReturnRequestRepository.TryLoadRequest(conn, null, ticketId, out requestedAt, out pendingItems);
+            return _returnRequestRepository.TryLoadRequest(conn, null, ticketId, out requestedAt, out pendingItems);
         }
 
-        public static void SubmitReturnRequest(
+        public void SubmitReturnRequest(
             int ticketId,
             int currentUserId,
             AppRole appRole,
@@ -148,28 +99,38 @@ namespace FrmProject.DAL
 
             try
             {
-                DbSchemaHelper.EnsureBorrowTicketStatusConstraint(conn, tran);
-                DbSchemaHelper.EnsureBorrowTicketNoteCapacity(conn, tran);
-
                 if (appRole == AppRole.User)
-                    ReturnApprovalService.VerifyTicketOwnership(conn, tran, ticketId, currentUserId);
+                {
+                    int? ownerUserId = conn.QueryFirstOrDefault<int?>(
+                        "sp_GetTicketOwnerId",
+                        new { ticketId },
+                        transaction: tran,
+                        commandType: CommandType.StoredProcedure);
+                    if (ownerUserId == null)
+                        throw new InvalidOperationException("Phiếu mượn không tồn tại.");
+                    if (ownerUserId.Value != currentUserId)
+                        throw new InvalidOperationException("Bạn không có quyền thao tác trên phiếu này.");
+                }
 
-                ReturnRequestRepository.SaveRequest(conn, tran, ticketId, requestedAt, returnItems, requestNote);
+                _returnRequestRepository.SaveRequest(conn, tran, ticketId, requestedAt, returnItems, requestNote);
 
-                bool hasReturnNote = DbSchemaHelper.HasColumn(conn, "BorrowTickets", "ReturnNote", tran);
                 string payload = ReturnRequestHelper.BuildPayload(requestedAt, returnItems);
-                using var cmd = new SqlCommand(BuildReturnRequestSql(hasReturnNote, appRole), conn, tran);
-                cmd.Parameters.AddWithValue("@id", ticketId);
-                cmd.Parameters.AddWithValue("@note", requestNote);
-                cmd.Parameters.AddWithValue("@returnPendingStatus", BorrowTicketStatus.ReturnPending);
-                cmd.Parameters.AddWithValue("@borrowingStatus", BorrowTicketStatus.Borrowing);
-                if (hasReturnNote)
-                    cmd.Parameters.AddWithValue("@returnPayload", payload);
-                if (appRole == AppRole.User)
-                    cmd.Parameters.AddWithValue("@userId", currentUserId);
+                object? affected = conn.ExecuteScalar(
+                    "sp_SubmitReturnRequestUpdate",
+                    new
+                    {
+                        ticketId,
+                        currentUserId,
+                        isUser = appRole == AppRole.User ? 1 : 0,
+                        requestNote,
+                        payload,
+                        returnPendingStatus = BorrowTicketStatus.ReturnPending,
+                        borrowingStatus = BorrowTicketStatus.Borrowing
+                    },
+                    transaction: tran,
+                    commandType: CommandType.StoredProcedure);
 
-                int affected = cmd.ExecuteNonQuery();
-                if (affected == 0)
+                if (affected == null || Convert.ToInt32(affected) == 0)
                     throw new InvalidOperationException("Phiếu không còn ở trạng thái đang mượn hoặc bạn không có quyền thao tác.");
 
                 tran.Commit();
@@ -180,22 +141,5 @@ namespace FrmProject.DAL
                 throw;
             }
         }
-
-        private static string BuildReturnRequestSql(bool hasReturnNote, AppRole appRole)
-        {
-            List<string> updates = new() { "Status = @returnPendingStatus" };
-
-            if (hasReturnNote)
-                updates.Add("ReturnNote = @returnPayload");
-
-            updates.Add("Note = CASE WHEN ISNULL(Note, '') = '' THEN @note ELSE ISNULL(Note, '') + ' | ' + @note END");
-
-            string whereClause = "TicketID = @id AND Status = @borrowingStatus";
-            if (appRole == AppRole.User)
-                whereClause += " AND UserID = @userId";
-
-            return "UPDATE BorrowTickets SET " + string.Join(", ", updates) + " WHERE " + whereClause;
-        }
     }
 }
-

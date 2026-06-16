@@ -5,6 +5,9 @@ namespace FrmProject.GUI
 {
     public partial class FrmMain : Form
     {
+        private IAuthorizationService AuthorizationService => AppServiceProvider.Get<IAuthorizationService>();
+        private IDashboardService DashboardService => AppServiceProvider.Get<IDashboardService>();
+
         private readonly int _userID;
         private readonly string _fullName;
         private readonly string _roleName;
@@ -26,8 +29,8 @@ namespace FrmProject.GUI
             _userID = userID;
             _fullName = fullName;
             _roleName = roleName;
-            _appRole = DbSchemaHelper.ResolveRole(roleName);
-            _permissions = DbSchemaHelper.BuildPermissions(_appRole);
+            _appRole = AuthorizationService.ResolveRole(roleName);
+            _permissions = AuthorizationService.BuildPermissions(_appRole);
 
             pnlContainerelContent.BackColor = Color.FromArgb(245, 246, 248);
             pnlContainerelContent.AutoScroll = true;
@@ -177,7 +180,7 @@ namespace FrmProject.GUI
                 _currentDashboardPage = 1;
 
                 // Async: load dashboard data trên background thread, tránh UI freeze
-                DashboardSnapshot dashboard = await Task.Run(() => DashboardRepository.Load(_currentDashboardPage, DashboardPageSize));
+                DashboardSnapshot dashboard = await Task.Run(() => DashboardService.Load(_currentDashboardPage, DashboardPageSize));
                 lbl04.Text = dashboard.TotalDevices.ToString();
                 lbl03.Text = dashboard.BorrowedDevices.ToString();
 
@@ -504,7 +507,7 @@ namespace FrmProject.GUI
                 btnNextDashboard.Enabled = false;
                 btnLastDashboard.Enabled = false;
 
-                DataTable dt = await Task.Run(() => DashboardRepository.LoadBorrowingListOnly(_currentDashboardPage, DashboardPageSize));
+                DataTable dt = await Task.Run(() => DashboardService.LoadBorrowingListOnly(_currentDashboardPage, DashboardPageSize));
                 LoadBorrowingList(dt);
             }
             catch (Exception ex)

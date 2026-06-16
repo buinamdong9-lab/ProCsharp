@@ -1,4 +1,4 @@
-﻿namespace FrmProject.Models
+namespace FrmProject.Models
 {
     public class DeviceDisplayModel
     {

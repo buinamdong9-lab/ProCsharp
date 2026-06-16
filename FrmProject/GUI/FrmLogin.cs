@@ -5,6 +5,7 @@ namespace FrmProject
 {
     public partial class FrmLogin : Form
     {
+        private IAuthService AuthService => AppServiceProvider.Get<IAuthService>();
         private sealed class UnknownUserAttemptState
         {
             public int FailedAttempts { get; init; }
@@ -66,7 +67,7 @@ namespace FrmProject
 
             try
             {
-                LoginUserRecord? user = AuthRepository.GetLoginUser(username);
+                LoginUserRecord? user = AuthService.GetLoginUser(username);
                 if (user != null)
                 {
                     if (IsLockoutActive(user.LockoutUntil, out TimeSpan remainingLockout))
@@ -80,7 +81,7 @@ namespace FrmProject
 
                     if (passwordOk && canAccess)
                     {
-                        AuthRepository.ResetFailedLoginState(user.UserID);
+                        AuthService.ResetFailedLoginState(user.UserID);
                         _unknownUserAttempts.TryRemove(username, out _);
 
                         // Ghi lịch sử đăng nhập thành công ra file log
@@ -105,7 +106,7 @@ namespace FrmProject
                     }
                     else
                     {
-                        LoginAttemptResult result = AuthRepository.RegisterFailedLogin(user.UserID, user.FailedLoginCount, user.LockoutUntil);
+                        LoginAttemptResult result = AuthService.RegisterFailedLogin(user.UserID, user.FailedLoginCount, user.LockoutUntil);
                         AppLogger.Warn($"[CẢNH BÁO] Tài khoản '{username}' đăng nhập thất bại.");
                         ShowFailedLoginMessage(result, "Tên đăng nhập hoặc mật khẩu không đúng, hoặc tài khoản hiện không khả dụng.");
                         txtControl.Text = string.Empty;

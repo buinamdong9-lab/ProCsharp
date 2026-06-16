@@ -1,6 +1,6 @@
 namespace FrmProject.Models
 {
-    internal sealed class LoginUserRecord
+    public sealed class LoginUserRecord
     {
         public int UserID { get; init; }
         public string FullName { get; init; } = string.Empty;
@@ -12,7 +12,7 @@ namespace FrmProject.Models
         public bool IsLocked { get; init; }
     }
 
-    internal sealed class LoginAttemptResult
+    public sealed class LoginAttemptResult
     {
         public int AttemptsLeft { get; init; }
         public DateTime? LockoutUntil { get; init; }

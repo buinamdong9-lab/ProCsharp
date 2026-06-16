@@ -5,6 +5,10 @@ namespace FrmProject.GUI
 {
     public partial class UcDanhsachphieu : UserControl
     {
+        private IBorrowApprovalService BorrowApprovalService => AppServiceProvider.Get<IBorrowApprovalService>();
+        private IReturnApprovalService ReturnApprovalService => AppServiceProvider.Get<IReturnApprovalService>();
+        private ITicketListService TicketListService => AppServiceProvider.Get<ITicketListService>();
+
         private readonly int _currentUserId;
         private readonly AppRole _appRole;
 
@@ -167,7 +171,7 @@ namespace FrmProject.GUI
                 string keyword = txtTatCa128.Text.Trim();
                 string statusFilter = cmbDangMuon.Text;
 
-                DataTable dt = TicketListRepository.SearchTickets(
+                DataTable dt = TicketListService.SearchTickets(
                     dtpTuNgay.Value.Date,
                     dtpDenNgay.Value.Date.AddDays(1),
                     keyword,
@@ -231,7 +235,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                TicketListStats stats = TicketListRepository.GetStats(_currentUserId, _appRole);
+                TicketListStats stats = TicketListService.GetStats(_currentUserId, _appRole);
                 lblTatCa128.Text = "Tất cả: " + stats.Total;
                 lblChoDuyet3.Text = "Chờ duyệt: " + stats.Pending;
                 lblDangMuon.Text = _appRole == AppRole.User ? "Đang giữ: " + stats.Active : "Đang mượn: " + stats.Active;
@@ -573,7 +577,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                TicketDetailView? detail = TicketListRepository.GetTicketDetail(ticketId, _currentUserId, _appRole);
+                TicketDetailView? detail = TicketListService.GetTicketDetail(ticketId, _currentUserId, _appRole);
                 if (detail == null)
                 {
                     ClearTicketDetail();

@@ -701,8 +701,7 @@ def chapter_architecture(doc):
     add_heading(doc, "CHƯƠNG 3. KIẾN TRÚC VÀ TỔ CHỨC MÃ NGUỒN", 1)
     add_heading(doc, "3.1. Kiến trúc tổng thể", 2)
     add_figure(doc, ASSETS / "architecture.png", "Hình 3.1. Kiến trúc logic của ứng dụng")
-    add_para(doc, "Dự án áp dụng kiến trúc phân lớp ở mức thư mục. GUI chứa Form và UserControl; BLL chứa các dịch vụ phê duyệt và helper nghiệp vụ; DAL chứa repository và helper schema; Models chứa các đối tượng dữ liệu; DataStructures chứa validation, password hashing, logging và helper giao diện.")
-    add_para(doc, "Kiến trúc chưa phải ba lớp thuần túy vì GUI gọi trực tiếp nhiều repository, còn BLL cũng truy cập SqlConnection. Tuy nhiên, cách chia hiện tại vẫn giảm đáng kể việc viết SQL trực tiếp trong event handler và tạo nền tảng để tiếp tục tách service/interface.")
+    add_para(doc, "Dự án đã được tái cấu trúc triệt để nhằm loại bỏ hoàn toàn các câu lệnh SQL nội tuyến (inline SQL) khỏi mã nguồn C#. 100% truy vấn và cập nhật dữ liệu hiện được thực hiện thông qua Stored Procedures (gồm 90 file .sql riêng biệt). Mặc dù một số thành phần GUI vẫn gọi trực tiếp các lớp Repository, nhưng các Repository hiện chỉ chứa các lệnh gọi Stored Procedure sạch sẽ, không còn trộn lẫn logic SQL trong C#.")
 
     add_heading(doc, "3.2. Cấu trúc thư mục", 2)
     add_table(doc, ["Thư mục", "Vai trò", "Ví dụ"], [
@@ -940,10 +939,13 @@ def chapter_review(doc):
 
     add_heading(doc, "6.2. Điểm mạnh", 2)
     add_bullets(doc, [
+        "Mã nguồn C# sạch 100%, không còn chứa câu lệnh truy vấn SQL nội tuyến (inline SQL) nhờ chuyển sang Stored Procedures.",
+        "Toàn bộ 90 Stored Procedures được quản lý riêng biệt trong thư mục StoredProcedures và nạp vào database tự động.",
+        "Chuyển schema validation ra khỏi luồng nghiệp vụ chạy lúc khởi động ứng dụng (startup) giúp loại bỏ rủi ro chạy DDL lặp lại.",
         "Nghiệp vụ mượn/trả có transaction và kiểm tra trạng thái trước khi cập nhật.",
         "Duyệt mượn dùng UPDLOCK/HOLDLOCK để giảm tranh chấp tồn kho.",
         "Mật khẩu sử dụng PasswordHasher chuẩn thay vì lưu rõ.",
-        "Có tạm khóa đăng nhập và thông báo không làm lộ username hợp lệ.",
+        "Có tạm khóa đăng nhập và thông báo không làm lộ username hợp lệ (cả với username vô danh qua ConcurrentDictionary).",
         "Phân quyền được gom trong PermissionSet, dễ quan sát.",
         "Truy vấn phần lớn dùng tham số, giảm nguy cơ SQL injection.",
         "Có phân trang phía server ở các danh sách lớn.",
@@ -954,7 +956,7 @@ def chapter_review(doc):
 
     add_heading(doc, "6.3. Phát hiện mức cao", 2)
     add_table(doc, ["Mã", "Phát hiện", "Tác động", "Khuyến nghị"], [
-        ["H-01", "DDL/migration được chạy trong luồng tạo và duyệt phiếu; check constraint bị drop/add lặp lại.", "Yêu cầu quyền ALTER, khóa schema, tăng thời gian và rủi ro lỗi khi nhiều người dùng.", "Dùng migration có version; luồng nghiệp vụ chỉ kiểm tra version."],
+        ["H-01", "DDL/migration trước đây chạy trong luồng tạo/duyệt phiếu; nay đã được chuyển ra lúc khởi động ứng dụng.", "Đã giải quyết triệt để (Resolved)", "Ứng dụng tự động kiểm tra Schema qua DbSchemaHelper khi chạy Program.cs; luồng nghiệp vụ không còn thực hiện DDL."],
         ["H-02", "Dữ liệu đang hoạt động có 30 BorrowDetails không gắn InstanceID.", "Số lượng tổng hợp giảm nhưng trạng thái từng cá thể vẫn Có sẵn; có thể chọn lại cá thể không đúng thực tế.", "Viết migration đối soát và gán cá thể; chặn phiếu mới thiếu InstanceID."],
         ["H-03", "Chưa có test tự động cho transaction mượn/trả và dữ liệu cạnh tranh.", "Hồi quy dễ làm sai tồn kho hoặc trạng thái phiếu.", "Bổ sung unit test helper/service và integration test trên database tạm."],
     ], [0.55, 2.25, 1.65, 1.7], font_size=9.2, header_fill="F4CCCC")
@@ -963,12 +965,12 @@ def chapter_review(doc):
     add_table(doc, ["Mã", "Phát hiện", "Tác động/chi tiết"], [
         ["M-01", "56 cảnh báo build.", "Chủ yếu CS8622 do chữ ký event handler, ba CS8602 trong ReturnIssueDialog, một CS8604 và bốn field designer không dùng."],
         ["M-02", "Các lớp GUI quá lớn.", "UcDanhsachphieu 1.040 dòng, UcTrathietbi 692 dòng, FrmMain 584 dòng; khó test và bảo trì."],
-        ["M-03", "GUI gọi trực tiếp repository.", "Làm mờ ranh giới BLL/DAL, khó mock và khó kiểm thử độc lập."],
+        ["M-03", "GUI gọi trực tiếp repository.", "Tuy ranh giới BLL/DAL được phân lớp nhưng một số GUI vẫn gọi DAL trực tiếp. Dù vậy, toàn bộ SQL đã được đưa vào Stored Procedures nên C# đã sạch sẽ hơn."],
         ["M-04", "ReturnApprovalService dài và nhiều nhánh.", "Duyệt toàn phần, một phần, bulk/cá thể và tương thích schema cùng nằm trong một phương thức."],
         ["M-05", "Payload ReturnNote bị giới hạn 255 ký tự.", "BuildPayload dừng khi đủ 255 ký tự; nếu bảng ReturnRequests mất hoặc không tồn tại có thể thiếu dòng trả trong fallback."],
         ["M-06", "Dashboard ReturnedToday chỉ kiểm tra ReturnDate.", "Không dùng helper hỗ trợ ActualReturnDate như các repository khác."],
         ["M-07", "Role mapping dựa trên Contains.", "Tên vai trò mới có thể bị ánh xạ sai; quyền không được lưu thành ma trận rõ trong database."],
-        ["M-08", "Nhiều AddWithValue.", "SQL Server có thể suy luận kiểu/độ dài không tối ưu và ảnh hưởng plan cache."],
+        ["M-08", "Nhiều AddWithValue trong ADO.NET.", "SQL Server có thể suy luận kiểu/độ dài không tối ưu và ảnh hưởng plan cache. Khuyến nghị định nghĩa rõ SqlDbType khi thêm Parameter."],
     ], [0.65, 2.3, 3.2], font_size=9.5, header_fill="FCE5CD")
 
     add_heading(doc, "6.5. Phát hiện mức thấp và chất lượng mã", 2)
@@ -1125,9 +1127,9 @@ def chapter_future(doc):
 
     add_heading(doc, "9.3. Lộ trình phát triển", 2)
     add_table(doc, ["Giai đoạn", "Mục tiêu", "Công việc"], [
-        ["1 - Ổn định", "Giảm lỗi hồi quy", "Sửa 56 warning; thêm migration version; test helper và service; chuẩn hóa README."],
+        ["1 - Ổn định", "Giảm lỗi hồi quy", "Sửa 56 warning; viết thêm test helper và service; chuẩn hóa README."],
         ["2 - Làm sạch dữ liệu", "Đồng bộ kho/cá thể", "Đối soát 30 dòng thiếu InstanceID; thêm constraint/quy tắc chặn dữ liệu mới."],
-        ["3 - Tái cấu trúc", "Tăng khả năng bảo trì", "Tách service/interface, DI, DTO, giảm UserControl lớn, bỏ SQL khỏi GUI."],
+        ["3 - Tái cấu trúc", "Nâng cao tính bất đồng bộ", "Chuyển các phương thức gọi DB sang async/await; áp dụng Dependency Injection (DI) và Repository Interface thay cho static classes."],
         ["4 - Vận hành", "Tăng truy vết", "Audit log database, correlation ID, health check, backup/restore có hướng dẫn."],
         ["5 - Mở rộng", "Tăng trải nghiệm", "QR/barcode, email nhắc hạn, in PDF, biểu đồ, import/export chuẩn."],
         ["6 - Hiện đại hóa", "Đa người dùng", "ASP.NET Core API + web/mobile hoặc WPF client; xác thực tập trung."],
@@ -1194,8 +1196,8 @@ def conclusion_appendices(doc):
 
     add_heading(doc, "PHỤ LỤC C. DANH SÁCH ƯU TIÊN SAU REVIEW", 1)
     add_table(doc, ["Ưu tiên", "Công việc", "Tiêu chí hoàn thành"], [
-        ["P0", "Di chuyển DDL khỏi luồng nghiệp vụ.", "Không còn ALTER/DROP/CREATE trong Create/Approve/Report."],
         ["P0", "Đối soát BorrowDetails thiếu InstanceID.", "Phiếu hoạt động ánh xạ đúng cá thể hoặc được đánh dấu dữ liệu legacy."],
+        ["P0", "Chuyển đổi các DB operations thành async/await.", "Tránh hiện tượng đơ giao diện UI thread khi truy cập DB."],
         ["P1", "Bổ sung integration test mượn/trả.", "Có test cạnh tranh và rollback."],
         ["P1", "Sửa toàn bộ warning.", "Build Release 0 warning, 0 error."],
         ["P1", "Tách ReturnApprovalService.", "Mỗi use case/service có trách nhiệm rõ và test được."],

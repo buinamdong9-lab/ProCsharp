@@ -6,6 +6,8 @@ namespace FrmProject.GUI
 {
     public partial class UcCauhinh : UserControl
     {
+        private ISettingsService SettingsService => AppServiceProvider.Get<ISettingsService>();
+
         public UcCauhinh()
         {
             InitializeComponent();
@@ -68,11 +70,11 @@ namespace FrmProject.GUI
 
         // ───────── AppSettings helpers ─────────
 
-        private static void EnsureAppSettingsTable()
+        private void EnsureAppSettingsTable()
         {
             try
             {
-                SettingsRepository.EnsureAppSettingsTable();
+                SettingsService.EnsureAppSettingsTable();
             }
             catch (Exception ex)
             {
@@ -87,30 +89,30 @@ namespace FrmProject.GUI
             try
             {
                 // Thông tin đơn vị
-                txtTenTruong.Text = SettingsRepository.GetValue("DonVi_TenTruong");
-                txtTenPhongBan.Text = SettingsRepository.GetValue("DonVi_TenPhongBan");
-                txtDiaChi.Text = SettingsRepository.GetValue("DonVi_DiaChi");
-                txtDienThoai.Text = SettingsRepository.GetValue("DonVi_DienThoai");
-                txtEmail.Text = SettingsRepository.GetValue("DonVi_Email");
-                txtWebsite.Text = SettingsRepository.GetValue("DonVi_Website");
+                txtTenTruong.Text = SettingsService.GetValue("DonVi_TenTruong");
+                txtTenPhongBan.Text = SettingsService.GetValue("DonVi_TenPhongBan");
+                txtDiaChi.Text = SettingsService.GetValue("DonVi_DiaChi");
+                txtDienThoai.Text = SettingsService.GetValue("DonVi_DienThoai");
+                txtEmail.Text = SettingsService.GetValue("DonVi_Email");
+                txtWebsite.Text = SettingsService.GetValue("DonVi_Website");
                  
                 // Cài đặt mượn trả
-                if (decimal.TryParse(SettingsRepository.GetValue("CaiDat_ThoiHanMuon", "7"), out decimal thoiHan))
+                if (decimal.TryParse(SettingsService.GetValue("CaiDat_ThoiHanMuon", "7"), out decimal thoiHan))
                     nudThoiHanMuonMacDinh.Value = Math.Clamp(thoiHan, nudThoiHanMuonMacDinh.Minimum, nudThoiHanMuonMacDinh.Maximum);
                 else nudThoiHanMuonMacDinh.Value = 7;
 
-                if (decimal.TryParse(SettingsRepository.GetValue("CaiDat_ToiDaThietBi", "10"), out decimal toiDa))
+                if (decimal.TryParse(SettingsService.GetValue("CaiDat_ToiDaThietBi", "10"), out decimal toiDa))
                     nudToiDaThietBiphieu.Value = Math.Clamp(toiDa, nudToiDaThietBiphieu.Minimum, nudToiDaThietBiphieu.Maximum);
                 else nudToiDaThietBiphieu.Value = 10;
 
-                if (decimal.TryParse(SettingsRepository.GetValue("CaiDat_NhacTruocHanTra", "2"), out decimal nhac))
+                if (decimal.TryParse(SettingsService.GetValue("CaiDat_NhacTruocHanTra", "2"), out decimal nhac))
                     nudNhacTruocHanTra.Value = Math.Clamp(nhac, nudNhacTruocHanTra.Minimum, nudNhacTruocHanTra.Maximum);
                 else nudNhacTruocHanTra.Value = 2;
 
-                string pheDuyet = SettingsRepository.GetValue("CaiDat_CanPheDuyet", "Có");
+                string pheDuyet = SettingsService.GetValue("CaiDat_CanPheDuyet", "Có");
                 cmbCanPheDuyet.SelectedIndex = pheDuyet == "Không" ? 1 : 0;
 
-                string gmail = SettingsRepository.GetValue("CaiDat_GuiGmail", "Không");
+                string gmail = SettingsService.GetValue("CaiDat_GuiGmail", "Không");
                 cmbGuiGmailNhacNho.SelectedIndex = gmail == "Có" ? 0 : 1;
             }
             catch (Exception ex)
@@ -143,7 +145,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                DataTable dt = SettingsRepository.GetDeviceCategories();
+                DataTable dt = SettingsService.GetDeviceCategories();
 
                 dgvData.AutoGenerateColumns = false;
                 colMaLoai.DataPropertyName = "Mã loại";
@@ -163,7 +165,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                DataTable dt = SettingsRepository.GetRoles();
+                DataTable dt = SettingsService.GetRoles();
                 dgvData2.DataSource = dt;
                 dgvData2.AutoGenerateColumns = true;
             }
@@ -174,7 +176,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                SettingsRepository.SaveValues(new Dictionary<string, string>
+                SettingsService.SaveValues(new Dictionary<string, string>
                 {
                     ["DonVi_TenTruong"] = txtTenTruong.Text.Trim(),
                     ["DonVi_TenPhongBan"] = txtTenPhongBan.Text.Trim(),
@@ -198,7 +200,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                SettingsRepository.SaveValues(new Dictionary<string, string>
+                SettingsService.SaveValues(new Dictionary<string, string>
                 {
                     ["CaiDat_ThoiHanMuon"] = nudThoiHanMuonMacDinh.Value.ToString(),
                     ["CaiDat_ToiDaThietBi"] = nudToiDaThietBiphieu.Value.ToString(),
@@ -234,7 +236,7 @@ namespace FrmProject.GUI
 
             try
             {
-                SettingsRepository.AddDeviceCategory(categoryName);
+                SettingsService.AddDeviceCategory(categoryName);
 
                 MessageBox.Show("Thêm loại thiết bị thành công!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);

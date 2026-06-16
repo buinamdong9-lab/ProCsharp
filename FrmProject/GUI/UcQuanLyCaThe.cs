@@ -7,6 +7,8 @@ namespace FrmProject.GUI
 {
     public partial class UcQuanLyCaThe : Form
     {
+        private IDeviceInstanceService DeviceInstanceService => AppServiceProvider.Get<IDeviceInstanceService>();
+
         private int _deviceID;
         private string _deviceCode = string.Empty;
         private string _deviceName = string.Empty;
@@ -45,7 +47,7 @@ namespace FrmProject.GUI
             // Lấy DeviceCode (mã gốc) để làm tiền tố cho ID cá thể
             try
             {
-                _deviceCode = DeviceInstanceRepository.GetDeviceCode(_deviceID);
+                _deviceCode = DeviceInstanceService.GetDeviceCode(_deviceID);
                 lblDeviceInfo.Text = $"Loại thiết bị: {_deviceName}   |   Mã gốc: {_deviceCode}";
                 LoadData();
                 EnterCreateMode();
@@ -63,7 +65,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                txtAssetCode.Text = DeviceInstanceRepository.GetNextAssetCode(_deviceID);
+                txtAssetCode.Text = DeviceInstanceService.GetNextAssetCode(_deviceID);
                 lblAssetCode.Text = "Mã cá thể tiếp theo:";
                 lblNextCode.Text = "← Mã được sinh tự động từ mã loại thiết bị";
             }
@@ -78,7 +80,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                dgvInstances.DataSource = DeviceInstanceRepository.GetByDevice(_deviceID);
+                dgvInstances.DataSource = DeviceInstanceService.GetByDevice(_deviceID);
                 if (dgvInstances.Columns["InstanceID"] != null)
                     dgvInstances.Columns["InstanceID"].Visible = false;
 
@@ -127,14 +129,14 @@ namespace FrmProject.GUI
             try
             {
                 // Kiểm tra trùng lặp (phòng trường hợp race condition)
-                if (DeviceInstanceRepository.AssetCodeExists(assetCode))
+                if (DeviceInstanceService.AssetCodeExists(assetCode))
                 {
                     MessageBox.Show("Mã này đã tồn tại (có thể vừa được thêm). Đang làm mới...");
                     LoadData();
                     return;
                 }
 
-                DeviceInstanceRepository.Insert(
+                DeviceInstanceService.Insert(
                     _deviceID,
                     assetCode,
                     cmbStatus.SelectedItem?.ToString() ?? DeviceStatus.Available,
@@ -175,7 +177,7 @@ namespace FrmProject.GUI
 
             try
             {
-                DeviceInstanceRepository.UpdateStatusAndCondition(_deviceID, _selectedInstanceId, newStatus, newCondition);
+                DeviceInstanceService.UpdateStatusAndCondition(_deviceID, _selectedInstanceId, newStatus, newCondition);
                 MessageBox.Show("Đã cập nhật tình trạng mã cá thể.", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
@@ -200,7 +202,7 @@ namespace FrmProject.GUI
             {
                 try
                 {
-                    DeviceInstanceRepository.Delete(_deviceID, instanceId);
+                    DeviceInstanceService.Delete(_deviceID, instanceId);
                     LoadData();
                     EnterCreateMode();
                 }

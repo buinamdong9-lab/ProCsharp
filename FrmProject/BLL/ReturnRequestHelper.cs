@@ -1,6 +1,6 @@
 namespace FrmProject.BLL
 {
-    internal sealed class ReturnRequestItem
+    public sealed class ReturnRequestItem
     {
         public int DeviceID { get; init; }
         public int InstanceID { get; init; }

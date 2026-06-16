@@ -1,0 +1,10 @@
+-- 14. THỦ TỤC LẤY ROLE ID TỪ TÊN VAI TRÒ
+CREATE OR ALTER PROCEDURE [dbo].[sp_GetRoleIdByName]
+    @name NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TOP 1 RoleID FROM Roles WHERE RoleName = @name;
+END
+GO
+

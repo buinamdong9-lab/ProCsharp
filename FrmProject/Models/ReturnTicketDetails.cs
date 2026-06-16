@@ -2,7 +2,7 @@ using System.Data;
 
 namespace FrmProject.Models
 {
-    internal sealed class ReturnTicketDetails
+    public sealed class ReturnTicketDetails
     {
         public string TicketDisplay { get; set; } = string.Empty;
         public string BorrowerName { get; set; } = string.Empty;

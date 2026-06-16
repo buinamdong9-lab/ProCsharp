@@ -1,4 +1,3 @@
-using FrmProject.DAL;
 using FrmProject.GUI;
 using System.Data;
 using System.Diagnostics;
@@ -7,6 +6,9 @@ namespace FrmProject.GUI
 {
     public partial class UcPhonghoc : UserControl
     {
+        private IRoomService RoomService => AppServiceProvider.Get<IRoomService>();
+        private IDeviceService DeviceService => AppServiceProvider.Get<IDeviceService>();
+
         private int _selectedRoomID = -1;
         private bool _isAdding = false;
 
@@ -60,7 +62,7 @@ namespace FrmProject.GUI
                 dgvPhongHoc.DataSource = null;
                 dgvPhongHoc.Columns.Clear();
                 dgvPhongHoc.AutoGenerateColumns = true;
-                dgvPhongHoc.DataSource = RoomRepository.GetAllRooms();
+                dgvPhongHoc.DataSource = RoomService.GetAllRooms();
 
                 if (dgvPhongHoc.Columns.Count > 0)
                 {
@@ -94,7 +96,7 @@ namespace FrmProject.GUI
             // Get RoomID via RoomDao (Task 5)
             try
             {
-                var roomInfo = RoomRepository.GetRoomByCode(roomCode);
+                var roomInfo = RoomService.GetRoomByCode(roomCode);
                 if (roomInfo.HasValue)
                 {
                     _selectedRoomID = roomInfo.Value.RoomID;
@@ -136,7 +138,7 @@ namespace FrmProject.GUI
             dgvThietBiPhong.AutoGenerateColumns = true;
             try
             {
-                dgvThietBiPhong.DataSource = DeviceRepository.GetDevicesByRoom(roomCode);
+                dgvThietBiPhong.DataSource = DeviceService.GetDevicesByRoom(roomCode);
                 if (dgvThietBiPhong.Columns.Count > 0)
                 {
                     dgvThietBiPhong.Columns["Mã TB"].Width = 100;
@@ -186,7 +188,7 @@ namespace FrmProject.GUI
 
             try
             {
-                RoomRepository.DeleteRoom(_selectedRoomID);
+                RoomService.DeleteRoom(_selectedRoomID);
 
                 MessageBox.Show("Đã xóa mềm phòng thành công!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -217,7 +219,7 @@ namespace FrmProject.GUI
                 if (_isAdding || _selectedRoomID < 0)
                 {
                     // Task 5: Use RoomDao
-                    RoomRepository.InsertRoom(
+                    RoomService.InsertRoom(
                         txtMaPhong.Text.Trim(),
                         txtTenPhong.Text.Trim(),
                         cmbLoaiPhong.Text.Trim(),
@@ -232,7 +234,7 @@ namespace FrmProject.GUI
                 else
                 {
                     // Task 5: Use RoomDao
-                    RoomRepository.UpdateRoom(
+                    RoomService.UpdateRoom(
                         _selectedRoomID,
                         txtMaPhong.Text.Trim(),
                         txtTenPhong.Text.Trim(),
@@ -285,11 +287,11 @@ namespace FrmProject.GUI
         {
             try
             {
-                // Task 5: Use RoomRepository.SearchRooms
+                // Task 5: Use RoomService.SearchRooms
                 string keyword = txtDanhSachPhongHoc.Text.Trim();
                 string type = cmbQuanLyPhongHoc2.Text;
                 string status = cmbQuanLyPhongHoc.Text;
-                dgvPhongHoc.DataSource = RoomRepository.SearchRooms(keyword, type, status);
+                dgvPhongHoc.DataSource = RoomService.SearchRooms(keyword, type, status);
             }
             catch (Exception ex) { AppLogger.Error($"[UcPhonghoc] Lỗi tìm kiếm", ex); }
         }

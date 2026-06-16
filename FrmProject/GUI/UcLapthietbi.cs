@@ -6,6 +6,10 @@ namespace FrmProject.GUI
 {
     public partial class UcLapthietbi : UserControl
     {
+        private ISettingsService SettingsService => AppServiceProvider.Get<ISettingsService>();
+        private IBorrowApprovalService BorrowApprovalService => AppServiceProvider.Get<IBorrowApprovalService>();
+        private IBorrowTicketService BorrowTicketService => AppServiceProvider.Get<IBorrowTicketService>();
+
         private DataTable _dtBorrowItems = new DataTable();
         private readonly int _currentUserId;
         private readonly string _currentUserName;
@@ -59,10 +63,10 @@ namespace FrmProject.GUI
         {
             try
             {
-                SettingsRepository.EnsureAppSettingsTable();
-                _defaultBorrowDays = Math.Max(0, SettingsRepository.GetIntValue("CaiDat_ThoiHanMuon", 7));
-                _maxDevicesPerTicket = Math.Max(1, SettingsRepository.GetIntValue("CaiDat_ToiDaThietBi", 10));
-                _requireApproval = SettingsRepository.GetYesNoValue("CaiDat_CanPheDuyet", true);
+                SettingsService.EnsureAppSettingsTable();
+                _defaultBorrowDays = Math.Max(0, SettingsService.GetIntValue("CaiDat_ThoiHanMuon", 7));
+                _maxDevicesPerTicket = Math.Max(1, SettingsService.GetIntValue("CaiDat_ToiDaThietBi", 10));
+                _requireApproval = SettingsService.GetYesNoValue("CaiDat_CanPheDuyet", true);
             }
             catch (Exception ex)
             {
@@ -115,12 +119,12 @@ namespace FrmProject.GUI
                 LoadBorrowerComboBox();
 
                 cmbPhongSuDung.Items.Clear();
-                foreach (LookupItem item in BorrowTicketRepository.GetRooms())
+                foreach (LookupItem item in BorrowTicketService.GetRooms())
                     cmbPhongSuDung.Items.Add(new ComboItem(item.Id, item.Text));
                 if (cmbPhongSuDung.Items.Count > 0) cmbPhongSuDung.SelectedIndex = 0;
 
                 cmbNgayLap.Items.Clear();
-                foreach (LookupItem item in BorrowTicketRepository.GetBorrowableDevices())
+                foreach (LookupItem item in BorrowTicketService.GetBorrowableDevices())
                     cmbNgayLap.Items.Add(new ComboItem(item.Id, item.Text));
                 if (cmbNgayLap.Items.Count > 0) cmbNgayLap.SelectedIndex = 0;
             }
@@ -152,7 +156,7 @@ namespace FrmProject.GUI
                 return;
             }
 
-            foreach (LookupItem item in BorrowTicketRepository.GetEnabledUsers())
+            foreach (LookupItem item in BorrowTicketService.GetEnabledUsers())
             {
                 ComboItem comboItem = new ComboItem(item.Id, item.Text);
                 _borrowerItems.Add(comboItem);
@@ -178,7 +182,7 @@ namespace FrmProject.GUI
 
             try
             {
-                foreach (LookupItem item in BorrowTicketRepository.GetAvailableInstances(device.ID))
+                foreach (LookupItem item in BorrowTicketService.GetAvailableInstances(device.ID))
                     cmbMaThietBi.Items.Add(new ComboItem(item.Id, item.Text));
                 if (cmbMaThietBi.Items.Count > 0) cmbMaThietBi.SelectedIndex = 0;
                 UpdateQuantityLimit();
@@ -352,7 +356,7 @@ namespace FrmProject.GUI
                     });
                 }
 
-                int ticketID = BorrowTicketRepository.CreatePendingTicket(draft);
+                int ticketID = BorrowTicketService.CreatePendingTicket(draft);
                 if (_requireApproval)
                 {
                     MessageBox.Show(

@@ -5,6 +5,9 @@ namespace FrmProject.GUI
 {
     public partial class UcTrathietbi : UserControl
     {
+        private IReturnTicketService ReturnTicketService => AppServiceProvider.Get<IReturnTicketService>();
+        private IReturnApprovalService ReturnApprovalService => AppServiceProvider.Get<IReturnApprovalService>();
+
         private readonly int _currentUserId;
         private readonly AppRole _appRole;
         private int _selectedTicketID = -1;
@@ -79,7 +82,7 @@ namespace FrmProject.GUI
             try
             {
                 cmbNgayMuon.Items.Clear();
-                foreach (LookupItem item in ReturnTicketRepository.SearchBorrowingTickets(_currentUserId, _appRole))
+                foreach (LookupItem item in ReturnTicketService.SearchBorrowingTickets(_currentUserId, _appRole))
                     cmbNgayMuon.Items.Add(new ComboItem(item.Id, item.Text));
 
                 if (cmbNgayMuon.Items.Count > 0)
@@ -123,7 +126,7 @@ namespace FrmProject.GUI
             try
             {
                 cmbNgayMuon.Items.Clear();
-                foreach (LookupItem item in ReturnTicketRepository.SearchBorrowingTickets(_currentUserId, _appRole, keyword))
+                foreach (LookupItem item in ReturnTicketService.SearchBorrowingTickets(_currentUserId, _appRole, keyword))
                     cmbNgayMuon.Items.Add(new ComboItem(item.Id, item.Text));
 
                 if (cmbNgayMuon.Items.Count > 0)
@@ -144,7 +147,7 @@ namespace FrmProject.GUI
             _selectedTicketID = ticketID;
             try
             {
-                ReturnTicketDetails? details = ReturnTicketRepository.GetTicketDetails(ticketID);
+                ReturnTicketDetails? details = ReturnTicketService.GetTicketDetails(ticketID);
                 if (details == null)
                     return;
 
@@ -172,8 +175,8 @@ namespace FrmProject.GUI
                 bool isPending = string.Equals(details.Status, BorrowTicketStatus.ReturnPending, StringComparison.OrdinalIgnoreCase);
                 if (isPendingApprovalView || isPending)
                 {
-                    ReturnTicketRepository.ApplyPendingReturnQuantities(ticketID, dt);
-                    if (ReturnTicketRepository.TryLoadPendingReturnRequest(ticketID, out DateTime requestedAt, out List<ReturnRequestItem> pendingItems))
+                    ReturnTicketService.ApplyPendingReturnQuantities(ticketID, dt);
+                    if (ReturnTicketService.TryLoadPendingReturnRequest(ticketID, out DateTime requestedAt, out List<ReturnRequestItem> pendingItems))
                     {
                         dtpNgayTra.Value = requestedAt == DateTime.MinValue ? DateTime.Now : requestedAt;
                         txtGhiChuTra.Text = isPending
@@ -202,7 +205,7 @@ namespace FrmProject.GUI
 
         private void ApplyPendingReturnQuantities(int ticketID, DataTable dt)
         {
-            ReturnTicketRepository.ApplyPendingReturnQuantities(ticketID, dt);
+            ReturnTicketService.ApplyPendingReturnQuantities(ticketID, dt);
         }
 
         private void BtnXacNhanTra_Click(object sender, EventArgs e)
@@ -267,7 +270,7 @@ namespace FrmProject.GUI
                 }
 
                 string requestNote = BuildReturnNote(returnItems);
-                ReturnTicketRepository.SubmitReturnRequest(
+                ReturnTicketService.SubmitReturnRequest(
                     _selectedTicketID,
                     _currentUserId,
                     _appRole,

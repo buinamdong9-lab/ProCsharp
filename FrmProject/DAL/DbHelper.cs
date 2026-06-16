@@ -8,13 +8,15 @@ namespace FrmProject.DAL
         private const string DefaultConnectionString =
             @"Server=localhost\SQLEXPRESS;Database=QuanLyThietBi;Trusted_Connection=True;TrustServerCertificate=True;";
 
+        public static string GetConnectionString()
+        {
+            return ConfigurationManager.ConnectionStrings["QuanLyThietBi"]?.ConnectionString
+                ?? DefaultConnectionString;
+        }
+
         public static SqlConnection GetConnection()
         {
-            string connectionString =
-                ConfigurationManager.ConnectionStrings["QuanLyThietBi"]?.ConnectionString
-                ?? DefaultConnectionString;
-
-            return new SqlConnection(connectionString);
+            return new SqlConnection(GetConnectionString());
         }
     }
 }

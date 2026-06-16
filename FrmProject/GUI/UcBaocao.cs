@@ -6,6 +6,8 @@ namespace FrmProject.GUI
 {
     public partial class UcBaocao : UserControl
     {
+        private IReportService ReportService => AppServiceProvider.Get<IReportService>();
+
         public UcBaocao()
         {
             InitializeComponent();
@@ -82,7 +84,7 @@ namespace FrmProject.GUI
 
         private void LoadMonthlyStats(DateTime from, DateTime to)
         {
-            DataTable dt = ReportRepository.GetMonthlyStats(from, to);
+            DataTable dt = ReportService.GetMonthlyStats(from, to);
             dgvData.DataSource = dt;
             dgvData.AutoGenerateColumns = true;
 
@@ -92,7 +94,7 @@ namespace FrmProject.GUI
 
         private void LoadTopDevices(DateTime from, DateTime to)
         {
-            DataTable dt = ReportRepository.GetTopDevices(from, to);
+            DataTable dt = ReportService.GetTopDevices(from, to);
 
             dgvData2.AutoGenerateColumns = false;
             colHang.DataPropertyName = "Hạng";
@@ -104,7 +106,7 @@ namespace FrmProject.GUI
 
         private void LoadOverdueTickets(DateTime from, DateTime to)
         {
-            DataTable dt = ReportRepository.GetOverdueTickets(from, to);
+            DataTable dt = ReportService.GetOverdueTickets(from, to);
 
             dgvData4.AutoGenerateColumns = false;
             colSoPhieu.DataPropertyName = "Số phiếu";

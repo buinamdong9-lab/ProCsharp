@@ -1,4 +1,3 @@
-using FrmProject.DAL;
 using System.Data;
 using System.Diagnostics;
 
@@ -6,6 +5,8 @@ namespace FrmProject.GUI
 {
     public partial class UcThietbi : UserControl
     {
+        private IDeviceService DeviceService => AppServiceProvider.Get<IDeviceService>();
+
         private int _selectedDeviceID = -1;
         private int _selectedTotalQuantity;
         private int _selectedAvailableQuantity;
@@ -67,13 +68,13 @@ namespace FrmProject.GUI
         {
             try
             {
-                int total = DeviceRepository.GetTotalDevicesCount(_keyword, _loai, _trangThai);
+                int total = DeviceService.GetTotalDevicesCount(_keyword, _loai, _trangThai);
                 _totalPages = Math.Max(1, (int)Math.Ceiling((double)total / PageSize));
 
                 if (_currentPage > _totalPages) _currentPage = _totalPages;
                 if (_currentPage < 1) _currentPage = 1;
 
-                DataTable dt = DeviceRepository.GetDevicesPaged(_currentPage, PageSize, _keyword, _loai, _trangThai);
+                DataTable dt = DeviceService.GetDevicesPaged(_currentPage, PageSize, _keyword, _loai, _trangThai);
 
                 dgvDevices.AutoGenerateColumns = true;
                 dgvDevices.DataSource = dt;
@@ -108,7 +109,7 @@ namespace FrmProject.GUI
         {
             try
             {
-                DataTable dt = DeviceRepository.GetCategories();
+                DataTable dt = DeviceService.GetCategories();
 
                 // ComboBox loại thiết bị trong form nhập
                 txtLoaiThietBi.Tag = dt; // Dùng combobox thay textbox6 nếu muốn, tạm dùng text
@@ -181,7 +182,7 @@ namespace FrmProject.GUI
             txtMaThietBi.ReadOnly = true;
             try
             {
-                txtMaThietBi.Text = DeviceRepository.GenerateDeviceCode();
+                txtMaThietBi.Text = DeviceService.GenerateDeviceCode();
             }
             catch { }
             txtTenThietBi.Focus();
@@ -218,7 +219,7 @@ namespace FrmProject.GUI
             {
                 bool isAdding = _selectedDeviceID < 0;
 
-                DeviceRepository.SaveDevice(
+                DeviceService.SaveDevice(
                     _selectedDeviceID,
                     txtMaThietBi.Text.Trim(),
                     txtTenThietBi.Text.Trim(),
@@ -270,7 +271,7 @@ namespace FrmProject.GUI
 
             try
             {
-                DeviceRepository.DeleteDevice(_selectedDeviceID);
+                DeviceService.DeleteDevice(_selectedDeviceID);
 
                 MessageBox.Show("Đã xóa mềm thiết bị thành công!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);

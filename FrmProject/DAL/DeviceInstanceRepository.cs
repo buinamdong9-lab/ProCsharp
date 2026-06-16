@@ -1,56 +1,50 @@
 using Microsoft.Data.SqlClient;
 using System.Data;
+using Dapper;
+using FrmProject.Models;
 
 namespace FrmProject.DAL
 {
-    internal static class DeviceInstanceRepository
+    public class DeviceInstanceRepository : IDeviceInstanceRepository
     {
-        public static DataTable GetByDevice(int deviceId)
+        public DataTable GetByDevice(int deviceId)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            using SqlCommand cmd = new SqlCommand(
-                "SELECT InstanceID, AssetCode AS [Mã tài sản], Status AS [Trạng thái], Condition AS [Tình trạng] FROM dbo.DeviceInstances WHERE DeviceID = @id ORDER BY InstanceID", conn);
-            cmd.Parameters.AddWithValue("@id", deviceId);
-            using SqlDataAdapter da = new SqlDataAdapter(cmd);
             DataTable dt = new DataTable();
-            da.Fill(dt);
+            dt.Load(conn.ExecuteReader(
+                "sp_GetInstancesByDevice",
+                new { deviceId },
+                commandType: CommandType.StoredProcedure));
             return dt;
         }
 
         /// <summary>
         /// Lấy DeviceCode (mã gốc) của loại thiết bị.
         /// </summary>
-        public static string GetDeviceCode(int deviceId)
+        public string GetDeviceCode(int deviceId)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            conn.Open();
-            using SqlCommand cmd = new SqlCommand("SELECT DeviceCode FROM dbo.Devices WHERE DeviceID = @id", conn);
-            cmd.Parameters.AddWithValue("@id", deviceId);
-            return cmd.ExecuteScalar()?.ToString() ?? deviceId.ToString();
+            return conn.ExecuteScalar<string>(
+                "sp_GetDeviceCodeOnly",
+                new { deviceId },
+                commandType: CommandType.StoredProcedure) ?? deviceId.ToString();
         }
 
         /// <summary>
         /// Tự động sinh mã cá thể tiếp theo dạng {DeviceCode}-{STT:D3}.
         /// Ví dụ: TH001 → TH001-001, TH001-002, ...
         /// </summary>
-        public static string GetNextAssetCode(int deviceId)
+        public string GetNextAssetCode(int deviceId)
         {
             string deviceCode = GetDeviceCode(deviceId);
 
             using SqlConnection conn = DbHelper.GetConnection();
-            conn.Open();
-
-            // Lấy tất cả AssetCode hiện tại của thiết bị này để tính số thứ tự tiếp theo
-            using SqlCommand cmd = new SqlCommand(
-                "SELECT AssetCode FROM dbo.DeviceInstances WHERE DeviceID = @id", conn);
-            cmd.Parameters.AddWithValue("@id", deviceId);
-
-            var existingCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            using (var reader = cmd.ExecuteReader())
-            {
-                while (reader.Read())
-                    existingCodes.Add(reader.GetString(0));
-            }
+            var existingCodes = new HashSet<string>(
+                conn.Query<string>(
+                    "sp_GetInstanceAssetCodesByDevice",
+                    new { deviceId },
+                    commandType: CommandType.StoredProcedure),
+                StringComparer.OrdinalIgnoreCase);
 
             // Tìm số thứ tự nhỏ nhất chưa dùng
             int seq = 1;
@@ -64,130 +58,85 @@ namespace FrmProject.DAL
             return candidate;
         }
 
-        public static bool AssetCodeExists(string assetCode)
+        public bool AssetCodeExists(string assetCode)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            conn.Open();
-            using SqlCommand cmd = new SqlCommand("SELECT COUNT(*) FROM dbo.DeviceInstances WHERE AssetCode = @code", conn);
-            cmd.Parameters.AddWithValue("@code", assetCode);
-            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+            return conn.ExecuteScalar<int>(
+                "sp_AssetCodeExists",
+                new { assetCode },
+                commandType: CommandType.StoredProcedure) > 0;
         }
 
-        public static void Insert(int deviceId, string assetCode, string status, string condition)
+        public void Insert(int deviceId, string assetCode, string status, string condition)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            conn.Open();
-            using SqlTransaction tran = conn.BeginTransaction();
-            try
-            {
-                using SqlCommand insertCmd = new SqlCommand(
-                    "INSERT INTO dbo.DeviceInstances (DeviceID, AssetCode, Status, Condition) VALUES (@devId, @code, @status, @cond)", conn, tran);
-                insertCmd.Parameters.AddWithValue("@devId", deviceId);
-                insertCmd.Parameters.AddWithValue("@code", assetCode);
-                insertCmd.Parameters.AddWithValue("@status", status);
-                insertCmd.Parameters.AddWithValue("@cond", condition);
-                insertCmd.ExecuteNonQuery();
-
-                UpdateDeviceQuantities(conn, tran, deviceId);
-                tran.Commit();
-            }
-            catch
-            {
-                tran.Rollback();
-                throw;
-            }
-        }
-
-        public static void Delete(int deviceId, int instanceId)
-        {
-            using SqlConnection conn = DbHelper.GetConnection();
-            conn.Open();
-            using SqlTransaction tran = conn.BeginTransaction();
-            try
-            {
-                using (SqlCommand statusCmd = new SqlCommand(
-                    "SELECT Status FROM dbo.DeviceInstances WHERE InstanceID = @id AND DeviceID = @deviceId", conn, tran))
+            conn.Execute(
+                "sp_InsertDeviceInstance",
+                new
                 {
-                    statusCmd.Parameters.AddWithValue("@id", instanceId);
-                    statusCmd.Parameters.AddWithValue("@deviceId", deviceId);
-                    string currentStatus = statusCmd.ExecuteScalar()?.ToString() ?? string.Empty;
-                    if (string.Equals(currentStatus, DeviceStatus.Borrowed, StringComparison.OrdinalIgnoreCase))
-                        throw new InvalidOperationException("Mã cá thể đang được mượn. Hãy xử lý trả thiết bị trước khi xóa mềm.");
-                }
-
-                using SqlCommand cmd = new SqlCommand(@"
-                    UPDATE dbo.DeviceInstances
-                    SET Status = @retiredStatus,
-                        Note = LTRIM(RTRIM(CONCAT(ISNULL(NULLIF(Note, ''), ''), CASE WHEN ISNULL(NULLIF(Note, ''), '') = '' THEN '' ELSE ' | ' END, @note)))
-                    WHERE InstanceID = @id
-                      AND DeviceID = @deviceId", conn, tran);
-                cmd.Parameters.AddWithValue("@retiredStatus", DeviceStatus.Retired);
-                cmd.Parameters.AddWithValue("@note", $"Xóa mềm ngày {DateTime.Now:dd/MM/yyyy HH:mm}");
-                cmd.Parameters.AddWithValue("@id", instanceId);
-                cmd.Parameters.AddWithValue("@deviceId", deviceId);
-                cmd.ExecuteNonQuery();
-
-                UpdateDeviceQuantities(conn, tran, deviceId);
-                tran.Commit();
-            }
-            catch
-            {
-                tran.Rollback();
-                throw;
-            }
+                    devId = deviceId,
+                    code = assetCode,
+                    status,
+                    cond = condition,
+                    retiredStatus = DeviceStatus.Retired,
+                    availableStatus = DeviceStatus.Available,
+                    goodCondition = DeviceCondition.Good
+                },
+                commandType: CommandType.StoredProcedure);
         }
 
-        public static void UpdateStatusAndCondition(int deviceId, int instanceId, string status, string condition)
+        public void Delete(int deviceId, int instanceId)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            conn.Open();
-            using SqlTransaction tran = conn.BeginTransaction();
-            try
-            {
-                using SqlCommand cmd = new SqlCommand(
-                    @"UPDATE dbo.DeviceInstances
-                      SET Status = @status,
-                          Condition = @condition
-                      WHERE InstanceID = @instanceId
-                        AND DeviceID = @deviceId", conn, tran);
-                cmd.Parameters.AddWithValue("@status", status);
-                cmd.Parameters.AddWithValue("@condition", condition);
-                cmd.Parameters.AddWithValue("@instanceId", instanceId);
-                cmd.Parameters.AddWithValue("@deviceId", deviceId);
-
-                int affected = cmd.ExecuteNonQuery();
-                if (affected == 0)
-                    throw new InvalidOperationException("Không tìm thấy mã cá thể cần cập nhật.");
-
-                UpdateDeviceQuantities(conn, tran, deviceId);
-                tran.Commit();
-            }
-            catch
-            {
-                tran.Rollback();
-                throw;
-            }
+            conn.Execute(
+                "sp_DeleteDeviceInstance",
+                new
+                {
+                    deviceId,
+                    instanceId,
+                    note = $"Xóa mềm ngày {DateTime.Now:dd/MM/yyyy HH:mm}",
+                    retiredStatus = DeviceStatus.Retired,
+                    availableStatus = DeviceStatus.Available,
+                    goodCondition = DeviceCondition.Good
+                },
+                commandType: CommandType.StoredProcedure);
         }
 
-        public static void UpdateDeviceQuantities(SqlConnection conn, SqlTransaction tran, int deviceId)
+        public void UpdateStatusAndCondition(int deviceId, int instanceId, string status, string condition)
         {
-            using SqlCommand cmd = new SqlCommand(@"
-                UPDATE dbo.Devices 
-                SET TotalQuantity = (SELECT COUNT(*) FROM dbo.DeviceInstances WHERE DeviceID = @id AND Status <> @retiredStatus),
-                    AvailableQuantity = (
-                        SELECT COUNT(*)
-                        FROM dbo.DeviceInstances
-                        WHERE DeviceID = @id
-                          AND Status = @availableStatus
-                          AND ISNULL(NULLIF(Condition, ''), @goodCondition) = @goodCondition
-                    )
-                WHERE DeviceID = @id", conn, tran);
-            cmd.Parameters.AddWithValue("@id", deviceId);
-            cmd.Parameters.AddWithValue("@retiredStatus", DeviceStatus.Retired);
-            cmd.Parameters.AddWithValue("@availableStatus", DeviceStatus.Available);
-            cmd.Parameters.AddWithValue("@goodCondition", DeviceCondition.Good);
-            cmd.ExecuteNonQuery();
+            using SqlConnection conn = DbHelper.GetConnection();
+            conn.Execute(
+                "sp_UpdateDeviceInstanceStatusAndCondition",
+                new
+                {
+                    deviceId,
+                    instanceId,
+                    status,
+                    condition,
+                    retiredStatus = DeviceStatus.Retired,
+                    availableStatus = DeviceStatus.Available,
+                    goodCondition = DeviceCondition.Good
+                },
+                commandType: CommandType.StoredProcedure);
+        }
+
+        /// <summary>
+        /// Cập nhật số lượng thiết bị sử dụng Stored Procedure.
+        /// Được gọi từ BLL (như ReturnApprovalService).
+        /// </summary>
+        public void UpdateDeviceQuantities(SqlConnection conn, SqlTransaction tran, int deviceId)
+        {
+            conn.Execute(
+                "sp_UpdateDeviceQuantities",
+                new
+                {
+                    id = deviceId,
+                    retiredStatus = DeviceStatus.Retired,
+                    availableStatus = DeviceStatus.Available,
+                    goodCondition = DeviceCondition.Good
+                },
+                transaction: tran,
+                commandType: CommandType.StoredProcedure);
         }
     }
 }
-

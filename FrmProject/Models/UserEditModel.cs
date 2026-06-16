@@ -1,12 +1,12 @@
 namespace FrmProject.Models
 {
-    internal sealed class UserIdentity
+    public sealed class UserIdentity
     {
         public int UserId { get; init; }
         public string Username { get; init; } = string.Empty;
     }
 
-    internal sealed class UserEditModel
+    public sealed class UserEditModel
     {
         public int UserId { get; set; }
         public string UserCode { get; set; } = string.Empty;
