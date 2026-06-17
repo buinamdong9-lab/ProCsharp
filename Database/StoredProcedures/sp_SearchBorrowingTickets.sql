@@ -12,7 +12,7 @@ BEGIN
     SET NOCOUNT ON;
     SELECT 
         bt.TicketID, 
-        ISNULL(bt.TicketCode, 'PM' + CONVERT(VARCHAR, bt.TicketID)) + ' - ' + u.FullName + ' (' + CONVERT(VARCHAR, bt.BorrowDate, 103) + ')' AS DisplayName
+        ISNULL(bt.TicketCode, 'PM' + CONVERT(VARCHAR, bt.TicketID)) + ' - ' + u.FullName + ' (' + CONVERT(VARCHAR, bt.BorrowDate, 103) + ')' AS DisplayText
     FROM BorrowTickets bt
     JOIN Users u ON u.UserID = bt.UserID
     WHERE bt.Status IN ('BORROWING', 'RETURN_PENDING')

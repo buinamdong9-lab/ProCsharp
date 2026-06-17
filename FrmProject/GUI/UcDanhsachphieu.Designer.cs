@@ -64,11 +64,6 @@ namespace FrmProject.GUI
             lblChonPhieu = new Label();
             pnlChiTietPhieu = new Panel();
             dgvChiTietThietBi = new DataGridView();
-            colCTMaTB = new DataGridViewTextBoxColumn();
-            colCTTenThietBi = new DataGridViewTextBoxColumn();
-            colCTSoLuong = new DataGridViewTextBoxColumn();
-            colCTTinhTrang = new DataGridViewTextBoxColumn();
-            colCTTinhTrangTra = new DataGridViewTextBoxColumn();
             lblCTTrangThai = new Label();
             lblCTTrangThaiTitle = new Label();
             lblCTNguoiDuyet = new Label();
@@ -88,6 +83,10 @@ namespace FrmProject.GUI
             dgvThongTinPhieu = new DataGridView();
             pnlChiTietLine = new Panel();
             lblChiTietTitle = new Label();
+            colCTMaTB = new DataGridViewTextBoxColumn();
+            colCTTenThietBi = new DataGridViewTextBoxColumn();
+            colCTSoLuong = new DataGridViewTextBoxColumn();
+            colCTTinhTrang = new DataGridViewTextBoxColumn();
             pnlContainerQuaHan5.SuspendLayout();
             pnlFilter.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvData).BeginInit();
@@ -458,7 +457,7 @@ namespace FrmProject.GUI
             dgvChiTietThietBi.BorderStyle = BorderStyle.None;
             dgvChiTietThietBi.ColumnHeadersHeight = 34;
             dgvChiTietThietBi.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            dgvChiTietThietBi.Columns.AddRange(new DataGridViewColumn[] { colCTMaTB, colCTTenThietBi, colCTSoLuong, colCTTinhTrang, colCTTinhTrangTra });
+            dgvChiTietThietBi.Columns.AddRange(new DataGridViewColumn[] { colCTMaTB, colCTTenThietBi, colCTSoLuong, colCTTinhTrang });
             dgvChiTietThietBi.EnableHeadersVisualStyles = false;
             dgvChiTietThietBi.GridColor = Color.FromArgb(235, 239, 245);
             dgvChiTietThietBi.Location = new Point(15, 241);
@@ -471,51 +470,6 @@ namespace FrmProject.GUI
             dgvChiTietThietBi.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvChiTietThietBi.Size = new Size(1238, 96);
             dgvChiTietThietBi.TabIndex = 18;
-            // 
-            // colCTMaTB
-            // 
-            colCTMaTB.DataPropertyName = "Mã TB";
-            colCTMaTB.FillWeight = 90F;
-            colCTMaTB.HeaderText = "Mã TB";
-            colCTMaTB.MinimumWidth = 6;
-            colCTMaTB.Name = "colCTMaTB";
-            colCTMaTB.ReadOnly = true;
-            // 
-            // colCTTenThietBi
-            // 
-            colCTTenThietBi.DataPropertyName = "Tên thiết bị";
-            colCTTenThietBi.FillWeight = 180F;
-            colCTTenThietBi.HeaderText = "Tên thiết bị";
-            colCTTenThietBi.MinimumWidth = 6;
-            colCTTenThietBi.Name = "colCTTenThietBi";
-            colCTTenThietBi.ReadOnly = true;
-            // 
-            // colCTSoLuong
-            // 
-            colCTSoLuong.DataPropertyName = "Số lượng";
-            colCTSoLuong.FillWeight = 70F;
-            colCTSoLuong.HeaderText = "Số lượng";
-            colCTSoLuong.MinimumWidth = 6;
-            colCTSoLuong.Name = "colCTSoLuong";
-            colCTSoLuong.ReadOnly = true;
-            // 
-            // colCTTinhTrang
-            // 
-            colCTTinhTrang.DataPropertyName = "Tình trạng khi mượn";
-            colCTTinhTrang.FillWeight = 145F;
-            colCTTinhTrang.HeaderText = "Tình trạng khi mượn";
-            colCTTinhTrang.MinimumWidth = 6;
-            colCTTinhTrang.Name = "colCTTinhTrang";
-            colCTTinhTrang.ReadOnly = true;
-            // 
-            // colCTTinhTrangTra
-            // 
-            colCTTinhTrangTra.DataPropertyName = "Tình trạng khi trả";
-            colCTTinhTrangTra.FillWeight = 145F;
-            colCTTinhTrangTra.HeaderText = "Tình trạng khi trả";
-            colCTTinhTrangTra.MinimumWidth = 6;
-            colCTTinhTrangTra.Name = "colCTTinhTrangTra";
-            colCTTinhTrangTra.ReadOnly = true;
             // 
             // lblCTTrangThai
             // 
@@ -731,13 +685,48 @@ namespace FrmProject.GUI
             lblChiTietTitle.TabIndex = 0;
             lblChiTietTitle.Text = "📋 Chi tiết phiếu";
             // 
+            // colCTMaTB
+            // 
+            colCTMaTB.DataPropertyName = "DeviceCode";
+            colCTMaTB.FillWeight = 90F;
+            colCTMaTB.HeaderText = "Mã TB";
+            colCTMaTB.MinimumWidth = 6;
+            colCTMaTB.Name = "colCTMaTB";
+            colCTMaTB.ReadOnly = true;
+            // 
+            // colCTTenThietBi
+            // 
+            colCTTenThietBi.DataPropertyName = "DeviceName";
+            colCTTenThietBi.FillWeight = 180F;
+            colCTTenThietBi.HeaderText = "Tên thiết bị";
+            colCTTenThietBi.MinimumWidth = 6;
+            colCTTenThietBi.Name = "colCTTenThietBi";
+            colCTTenThietBi.ReadOnly = true;
+            // 
+            // colCTSoLuong
+            // 
+            colCTSoLuong.DataPropertyName = "Quantity";
+            colCTSoLuong.FillWeight = 70F;
+            colCTSoLuong.HeaderText = "Số lượng";
+            colCTSoLuong.MinimumWidth = 6;
+            colCTSoLuong.Name = "colCTSoLuong";
+            colCTSoLuong.ReadOnly = true;
+            // 
+            // colCTTinhTrang
+            // 
+            colCTTinhTrang.DataPropertyName = "BorrowCondition";
+            colCTTinhTrang.FillWeight = 145F;
+            colCTTinhTrang.HeaderText = "Tình trạng khi trả";
+            colCTTinhTrang.MinimumWidth = 6;
+            colCTTinhTrang.Name = "colCTTinhTrang";
+            colCTTinhTrang.ReadOnly = true;
+            // 
             // UcDanhsachphieu
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             AutoScroll = true;
             AutoScrollMinSize = new Size(0, 930);
-            ClientSize = new Size(1431, 906);
             Controls.Add(pnlChiTietPhieu);
             Controls.Add(dgvData);
             Controls.Add(pnlFilter);
@@ -746,7 +735,7 @@ namespace FrmProject.GUI
             Controls.Add(lblDanhSachPhieuMuon);
             ForeColor = Color.Black;
             Name = "UcDanhsachphieu";
-            Text = "Danh sách phiếu";
+            Size = new Size(1410, 906);
             pnlContainerQuaHan5.ResumeLayout(false);
             pnlFilter.ResumeLayout(false);
             pnlFilter.PerformLayout();
@@ -875,7 +864,6 @@ namespace FrmProject.GUI
         private DataGridViewTextBoxColumn colCTTenThietBi;
         private DataGridViewTextBoxColumn colCTSoLuong;
         private DataGridViewTextBoxColumn colCTTinhTrang;
-        private DataGridViewTextBoxColumn colCTTinhTrangTra;
     }
 }
 

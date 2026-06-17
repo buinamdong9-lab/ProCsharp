@@ -1,6 +1,7 @@
-using FrmProject.GUI;
+using System.Collections.Generic;
 using System.Data;
 using OfficeOpenXml;
+using FrmProject.Models;
 
 namespace FrmProject
 {
@@ -100,11 +101,23 @@ namespace FrmProject
                 if (_currentPage < 1)           _currentPage = 1;
 
                 // 2. Lấy dữ liệu trang hiện tại
-                DataTable dt = UserService.GetUsersPaged(
+                List<UserDisplayModel> list = UserService.GetUsersPaged(
                     _currentPage, PageSize, _keyword, _role, _status);
 
-                dgvNguoiDung.DataSource          = dt;
+                dgvNguoiDung.DataSource          = list;
                 dgvNguoiDung.AutoGenerateColumns = true;
+
+                if (dgvNguoiDung.Columns.Count > 0)
+                {
+                    dgvNguoiDung.Columns["UserCode"].HeaderText = "Mã ND";
+                    dgvNguoiDung.Columns["FullName"].HeaderText = "Họ tên";
+                    dgvNguoiDung.Columns["Email"].HeaderText = "Email";
+                    dgvNguoiDung.Columns["Department"].HeaderText = "Khoa/Bộ Môn";
+                    dgvNguoiDung.Columns["Role"].HeaderText = "Vai trò";
+                    dgvNguoiDung.Columns["Phone"].HeaderText = "Số điện thoại";
+                    dgvNguoiDung.Columns["BorrowingCount"].HeaderText = "Đang mượn";
+                    dgvNguoiDung.Columns["Status"].HeaderText = "Trạng thái";
+                }
 
                 // 3. Cập nhật UI phân trang
                 lblPageInfo.Text  = $"Trang {_currentPage} / {_totalPages}  ({total} người)";
@@ -136,13 +149,13 @@ namespace FrmProject
             if (e.RowIndex < 0) return;
             var row = dgvNguoiDung.Rows[e.RowIndex];
 
-            txtMaNguoiDung.Text  = row.Cells[Col.MaND]?.Value?.ToString() ?? "";
-            txtHoTen.Text        = row.Cells[Col.HoTen]?.Value?.ToString() ?? "";
-            txtEmail.Text        = row.Cells[Col.Email]?.Value?.ToString() ?? "";
-            txtKhoaBoMon.Text    = row.Cells[Col.KhoaBoMon]?.Value?.ToString() ?? "";
-            txtSoDienThoai.Text  = row.Cells[Col.SoDienThoai]?.Value?.ToString() ?? "";
-            cmbVaiTro.Text       = row.Cells[Col.VaiTro]?.Value?.ToString() ?? "";
-            cmbTrangThai.Text    = row.Cells[Col.TrangThai]?.Value?.ToString() ?? "";
+            txtMaNguoiDung.Text  = row.Cells["UserCode"]?.Value?.ToString() ?? "";
+            txtHoTen.Text        = row.Cells["FullName"]?.Value?.ToString() ?? "";
+            txtEmail.Text        = row.Cells["Email"]?.Value?.ToString() ?? "";
+            txtKhoaBoMon.Text    = row.Cells["Department"]?.Value?.ToString() ?? "";
+            txtSoDienThoai.Text  = row.Cells["Phone"]?.Value?.ToString() ?? "";
+            cmbVaiTro.Text       = row.Cells["Role"]?.Value?.ToString() ?? "";
+            cmbTrangThai.Text    = row.Cells["Status"]?.Value?.ToString() ?? "";
             txtMatKhau.Text      = "";
 
             try
@@ -351,7 +364,12 @@ namespace FrmProject
 
             try
             {
-                using var package = new ExcelPackage(new System.IO.FileInfo(sfd.FileName));
+                var fileInfo = new System.IO.FileInfo(sfd.FileName);
+                if (fileInfo.Exists)
+                {
+                    fileInfo.Delete();
+                }
+                using var package = new ExcelPackage(fileInfo);
                 var ws = package.Workbook.Worksheets.Add("NguoiDung");
 
                 int col = 1;

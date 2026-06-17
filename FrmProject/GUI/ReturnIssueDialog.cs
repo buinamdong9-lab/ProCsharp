@@ -1,4 +1,9 @@
-using System.Data;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+using FrmProject.Models;
 
 namespace FrmProject.GUI
 {
@@ -15,20 +20,31 @@ namespace FrmProject.GUI
             "Khác"
         };
 
-        private readonly DataTable _source;
-        private readonly DataTable _editTable;
+        private readonly List<ReturnTicketItemModel> _source;
+        private readonly List<ReturnTicketItemModel> _editList;
 
-        private ReturnIssueDialog(DataTable source, IWin32Window owner)
+        private ReturnIssueDialog(List<ReturnTicketItemModel> source, IWin32Window owner)
         {
             _source = source;
-            _editTable = source.Copy();
-            EnsureReturnIssueColumns(_editTable);
+            _editList = source.Select(item => new ReturnTicketItemModel
+            {
+                DeviceID = item.DeviceID,
+                InstanceID = item.InstanceID,
+                AssetCode = item.AssetCode,
+                DeviceName = item.DeviceName,
+                BorrowQty = item.BorrowQty,
+                ReturnQty = item.ReturnQty,
+                BorrowCondition = string.IsNullOrWhiteSpace(item.BorrowCondition) ? "Tốt" : item.BorrowCondition,
+                ReturnCondition = string.IsNullOrWhiteSpace(item.ReturnCondition) ? "Tốt" : item.ReturnCondition,
+                Note = item.Note
+            }).ToList();
 
             InitializeComponent();
             ViewHelper.ApplyBaseStyle(this);
             ApplyOwnerSize(owner);
 
-            dgvReturnIssues.DataSource = _editTable;
+            dgvReturnIssues.AutoGenerateColumns = false;
+            dgvReturnIssues.DataSource = _editList;
 
             dgvReturnIssues.BackgroundColor = Color.White;
             dgvReturnIssues.GridColor = Color.FromArgb(220, 220, 220);
@@ -39,7 +55,7 @@ namespace FrmProject.GUI
             dgvReturnIssues.DefaultCellStyle.SelectionForeColor = Color.Black;
         }
 
-        public static bool ShowFor(DataTable source, IWin32Window owner)
+        public static bool ShowFor(List<ReturnTicketItemModel> source, IWin32Window owner)
         {
             using ReturnIssueDialog dialog = new ReturnIssueDialog(source, owner);
             return dialog.ShowDialog(owner) == DialogResult.OK;
@@ -58,61 +74,35 @@ namespace FrmProject.GUI
         private void ConfirmClick(object? sender, EventArgs e)
         {
             dgvReturnIssues.EndEdit();
-            if (!ValidateReturnIssueRows(_editTable))
+            if (!ValidateReturnIssueRows(_editList))
                 return;
 
-            ApplyReturnIssueRows(_source, _editTable);
+            ApplyReturnIssueRows(_source, _editList);
             DialogResult = DialogResult.OK;
             Close();
         }
 
-        private static void EnsureReturnIssueColumns(DataTable table)
+        private static bool ValidateReturnIssueRows(List<ReturnTicketItemModel> list)
         {
-            if (!table.Columns.Contains("Tình trạng khi mượn"))
-                table.Columns.Add("Tình trạng khi mượn", typeof(string));
-            if (!table.Columns.Contains("Tình trạng khi trả"))
-                table.Columns.Add("Tình trạng khi trả", typeof(string));
-            if (!table.Columns.Contains("Ghi chú"))
-                table.Columns.Add("Ghi chú", typeof(string));
-
-            var colSlTra = table.Columns["SL trả"];
-            if (colSlTra != null)
-                colSlTra.ReadOnly = false;
-
-            var colTinhTrang = table.Columns["Tình trạng khi trả"];
-            if (colTinhTrang != null)
-                colTinhTrang.ReadOnly = false;
-
-            var colGhiChu = table.Columns["Ghi chú"];
-            if (colGhiChu != null)
-                colGhiChu.ReadOnly = false;
-
-            foreach (DataRow row in table.Rows)
+            foreach (var item in list)
             {
-                if (string.IsNullOrWhiteSpace(row["Tình trạng khi mượn"]?.ToString()))
-                    row["Tình trạng khi mượn"] = "Tốt";
-                if (string.IsNullOrWhiteSpace(row["Tình trạng khi trả"]?.ToString()))
-                    row["Tình trạng khi trả"] = "Tốt";
-            }
-        }
-
-        private static bool ValidateReturnIssueRows(DataTable table)
-        {
-            foreach (DataRow row in table.Rows)
-            {
-                int borrowedQty = Convert.ToInt32(row["SL mượn"]);
-                if (!int.TryParse(row["SL trả"]?.ToString(), out int returnQty) || returnQty < 0 || returnQty > borrowedQty)
+                int borrowedQty = item.BorrowQty;
+                int returnQty = item.ReturnQty;
+                if (returnQty < 0 || returnQty > borrowedQty)
                 {
-                    MessageBox.Show($"Số lượng trả của thiết bị '{row["Tên thiết bị"]}' phải từ 0 đến {borrowedQty}.",
+                    MessageBox.Show($"Số lượng trả của thiết bị '{item.DeviceName}' phải từ 0 đến {borrowedQty}.",
                         "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return false;
                 }
 
-                string returnCondition = row["Tình trạng khi trả"]?.ToString() ?? string.Empty;
-                if ((returnQty < borrowedQty || !IsGoodReturnCondition(returnCondition)) &&
-                    string.IsNullOrWhiteSpace(row["Ghi chú"]?.ToString()))
+                string returnCondition = item.ReturnCondition;
+                bool isGoodCondition = IsGoodReturnCondition(returnCondition);
+                bool isPartialReturnOfReturnedItems = returnQty > 0 && returnQty < borrowedQty;
+                bool isBadCondition = !isGoodCondition;
+
+                if ((isPartialReturnOfReturnedItems || isBadCondition) && string.IsNullOrWhiteSpace(item.Note))
                 {
-                    MessageBox.Show($"Vui lòng nhập cảnh báo/ghi chú cho thiết bị '{row["Tên thiết bị"]}'.",
+                    MessageBox.Show($"Vui lòng nhập cảnh báo/ghi chú cho thiết bị '{item.DeviceName}'.",
                         "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return false;
                 }
@@ -121,15 +111,13 @@ namespace FrmProject.GUI
             return true;
         }
 
-        private static void ApplyReturnIssueRows(DataTable target, DataTable source)
+        private static void ApplyReturnIssueRows(List<ReturnTicketItemModel> target, List<ReturnTicketItemModel> source)
         {
-            EnsureReturnIssueColumns(target);
-
-            for (int i = 0; i < target.Rows.Count && i < source.Rows.Count; i++)
+            for (int i = 0; i < target.Count && i < source.Count; i++)
             {
-                target.Rows[i]["SL trả"] = source.Rows[i]["SL trả"];
-                target.Rows[i]["Tình trạng khi trả"] = source.Rows[i]["Tình trạng khi trả"];
-                target.Rows[i]["Ghi chú"] = source.Rows[i]["Ghi chú"];
+                target[i].ReturnQty = source[i].ReturnQty;
+                target[i].ReturnCondition = source[i].ReturnCondition;
+                target[i].Note = source[i].Note;
             }
         }
 
@@ -140,4 +128,3 @@ namespace FrmProject.GUI
         }
     }
 }
-

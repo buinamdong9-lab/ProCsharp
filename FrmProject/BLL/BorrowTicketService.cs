@@ -6,19 +6,12 @@ using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class BorrowTicketService : IBorrowTicketService
+    public class BorrowTicketService(IBorrowTicketRepository borrowTicketRepository) : IBorrowTicketService
     {
-        private readonly IBorrowTicketRepository _borrowTicketRepository;
-
-        public BorrowTicketService(IBorrowTicketRepository borrowTicketRepository)
-        {
-            _borrowTicketRepository = borrowTicketRepository;
-        }
-
-        public List<LookupItem> GetEnabledUsers() => _borrowTicketRepository.GetEnabledUsers();
-        public List<LookupItem> GetRooms() => _borrowTicketRepository.GetRooms();
-        public List<LookupItem> GetBorrowableDevices() => _borrowTicketRepository.GetBorrowableDevices();
-        public List<LookupItem> GetAvailableInstances(int deviceId) => _borrowTicketRepository.GetAvailableInstances(deviceId);
+        public List<LookupItem> GetEnabledUsers() => borrowTicketRepository.GetEnabledUsers();
+        public List<LookupItem> GetRooms() => borrowTicketRepository.GetRooms();
+        public List<LookupItem> GetBorrowableDevices() => borrowTicketRepository.GetBorrowableDevices();
+        public List<LookupItem> GetAvailableInstances(int deviceId) => borrowTicketRepository.GetAvailableInstances(deviceId);
 
         public int CreatePendingTicket(BorrowTicketDraft draft)
         {
@@ -40,7 +33,7 @@ namespace FrmProject.BLL
             if (draft.ExpectedReturnDate < draft.BorrowDate)
                 throw new ArgumentException("Ngày dự kiến trả phải lớn hơn hoặc bằng ngày mượn.");
 
-            return _borrowTicketRepository.CreatePendingTicket(draft);
+            return borrowTicketRepository.CreatePendingTicket(draft);
         }
     }
 }

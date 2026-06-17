@@ -1,6 +1,7 @@
-using FrmProject.GUI;
+using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using FrmProject.Models;
 
 namespace FrmProject.GUI
 {
@@ -66,12 +67,18 @@ namespace FrmProject.GUI
 
                 if (dgvPhongHoc.Columns.Count > 0)
                 {
-                    dgvPhongHoc.Columns["Mã phòng"].Width = 90;
-                    dgvPhongHoc.Columns["Tên phòng"].Width = 180;
-                    dgvPhongHoc.Columns["Loại"].Width = 150;
-                    dgvPhongHoc.Columns["Tầng"].Width = 60;
-                    dgvPhongHoc.Columns["Sức chứa"].Width = 90;
-                    dgvPhongHoc.Columns["Trạng thái"].AutoSizeMode =
+                    dgvPhongHoc.Columns["RoomCode"].HeaderText = "Mã phòng";
+                    dgvPhongHoc.Columns["RoomCode"].Width = 90;
+                    dgvPhongHoc.Columns["RoomName"].HeaderText = "Tên phòng";
+                    dgvPhongHoc.Columns["RoomName"].Width = 180;
+                    dgvPhongHoc.Columns["RoomType"].HeaderText = "Loại";
+                    dgvPhongHoc.Columns["RoomType"].Width = 150;
+                    dgvPhongHoc.Columns["Floor"].HeaderText = "Tầng";
+                    dgvPhongHoc.Columns["Floor"].Width = 60;
+                    dgvPhongHoc.Columns["Capacity"].HeaderText = "Sức chứa";
+                    dgvPhongHoc.Columns["Capacity"].Width = 90;
+                    dgvPhongHoc.Columns["Status"].HeaderText = "Trạng thái";
+                    dgvPhongHoc.Columns["Status"].AutoSizeMode =
                         DataGridViewAutoSizeColumnMode.Fill;
                 }
             }
@@ -87,11 +94,11 @@ namespace FrmProject.GUI
             if (e.RowIndex < 0) return;
             var row = dgvPhongHoc.Rows[e.RowIndex];
 
-            string roomCode = row.Cells["Mã phòng"].Value?.ToString() ?? "";
+            string roomCode = row.Cells["RoomCode"].Value?.ToString() ?? "";
             txtMaPhong.Text = roomCode;
-            txtTenPhong.Text = row.Cells["Tên phòng"].Value?.ToString() ?? "";
-            cmbLoaiPhong.Text = row.Cells["Loại"].Value?.ToString() ?? "";
-            cmbTrangThai.Text = row.Cells["Trạng thái"].Value?.ToString() ?? "";
+            txtTenPhong.Text = row.Cells["RoomName"].Value?.ToString() ?? "";
+            cmbLoaiPhong.Text = row.Cells["RoomType"].Value?.ToString() ?? "";
+            cmbTrangThai.Text = row.Cells["Status"].Value?.ToString() ?? "";
 
             // Get RoomID via RoomDao (Task 5)
             try
@@ -141,10 +148,14 @@ namespace FrmProject.GUI
                 dgvThietBiPhong.DataSource = DeviceService.GetDevicesByRoom(roomCode);
                 if (dgvThietBiPhong.Columns.Count > 0)
                 {
-                    dgvThietBiPhong.Columns["Mã TB"].Width = 100;
-                    dgvThietBiPhong.Columns["Tên thiết bị"].Width = 200;
-                    dgvThietBiPhong.Columns["SL"].Width = 60;
-                    dgvThietBiPhong.Columns["Tình trạng"].AutoSizeMode =
+                    dgvThietBiPhong.Columns["DeviceCode"].HeaderText = "Mã TB";
+                    dgvThietBiPhong.Columns["DeviceCode"].Width = 100;
+                    dgvThietBiPhong.Columns["DeviceName"].HeaderText = "Tên thiết bị";
+                    dgvThietBiPhong.Columns["DeviceName"].Width = 200;
+                    dgvThietBiPhong.Columns["Quantity"].HeaderText = "SL";
+                    dgvThietBiPhong.Columns["Quantity"].Width = 60;
+                    dgvThietBiPhong.Columns["Status"].HeaderText = "Tình trạng";
+                    dgvThietBiPhong.Columns["Status"].AutoSizeMode =
                         DataGridViewAutoSizeColumnMode.Fill;
                 }
             }

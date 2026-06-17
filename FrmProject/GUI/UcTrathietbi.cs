@@ -1,5 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Forms;
+using System.Drawing;
 using FrmProject.GUI;
-using System.Data;
+using FrmProject.Models;
 
 namespace FrmProject.GUI
 {
@@ -168,9 +173,7 @@ namespace FrmProject.GUI
                     lblPhieuNayDaQua.Visible = false;
                 }
 
-                DataTable dt = details.Items;
-                foreach (DataColumn col in dt.Columns)
-                    col.ReadOnly = false;
+                List<ReturnTicketItemModel> dt = details.Items;
 
                 bool isPending = string.Equals(details.Status, BorrowTicketStatus.ReturnPending, StringComparison.OrdinalIgnoreCase);
                 if (isPendingApprovalView || isPending)
@@ -185,15 +188,65 @@ namespace FrmProject.GUI
                     }
                 }
 
+                // Dùng AutoGenerateColumns=false để kiểm soát hoàn toàn kiểu cột
+                dgvData.DataSource = null;
+                dgvData.AutoGenerateColumns = false;
+                dgvData.Columns.Clear();
+
+                // Gắn handler xử lý lỗi giá trị ComboBox (tránh crash khi giá trị chưa trong list)
+                dgvData.DataError -= DgvData_DataError;
+                dgvData.DataError += DgvData_DataError;
+
+                bool canEdit = !isPendingApprovalView && !isPending;
+
+                // Cột ẩn
+                dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DeviceID",   Name = "DeviceID",   Visible = false });
+                dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "InstanceID", Name = "InstanceID", Visible = false });
+
+                // Cột hiển thị read-only
+                dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "AssetCode",  Name = "AssetCode",       HeaderText = "Mã tài sản",       ReadOnly = true, MinimumWidth = 90  });
+                dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DeviceName", Name = "DeviceName",      HeaderText = "Tên thiết bị",      ReadOnly = true, MinimumWidth = 140 });
+                dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "BorrowQty",  Name = "BorrowQty",       HeaderText = "SL mượn",           ReadOnly = true, MinimumWidth = 70  });
+                dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReturnQty",  Name = "ReturnQty",       HeaderText = "SL trả",            ReadOnly = true, MinimumWidth = 70  });
+
+                // Tình trạng khi mượn – luôn read-only (dữ liệu gốc từ phiếu)
+                dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "BorrowCondition", Name = "BorrowCondition", HeaderText = "Tình trạng khi mượn", ReadOnly = true, MinimumWidth = 130 });
+
+                // Tình trạng khi trả – ComboBox cho phép người dùng chọn
+                if (canEdit)
+                {
+                    var cmbCol = new DataGridViewComboBoxColumn
+                    {
+                        DataPropertyName = "ReturnCondition",
+                        HeaderText = "Tình trạng khi trả ▼",
+                        Name = "ReturnCondition",
+                        ReadOnly = false,
+                        FlatStyle = FlatStyle.Flat,
+                        MinimumWidth = 150,
+                        DisplayStyleForCurrentCellOnly = false
+                    };
+                    cmbCol.Items.AddRange(new object[] {
+                        "Tốt", "Hỏng hóc", "Bảo trì", "Mất", "Trầy xước", "Thiếu phụ kiện", "Khác"
+                    });
+                    dgvData.Columns.Add(cmbCol);
+                }
+                else
+                {
+                    dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReturnCondition", Name = "ReturnCondition", HeaderText = "Tình trạng khi trả", ReadOnly = true, MinimumWidth = 130 });
+                }
+
+                // Ghi chú – có thể nhập khi trả
+                dgvData.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Note", Name = "Note", HeaderText = "Ghi chú", ReadOnly = !canEdit, MinimumWidth = 160 });
+
+                // Bind dữ liệu SAU KHI đã định nghĩa cột
                 dgvData.DataSource = dt;
-                if (dgvData.Columns.Contains("DeviceID"))
-                    dgvData.Columns["DeviceID"].Visible = false;
-                if (dgvData.Columns.Contains("InstanceID"))
-                    dgvData.Columns["InstanceID"].Visible = false;
-                dgvData.ReadOnly = true;
+
+                dgvData.ReadOnly = false; // phải false để các cột individual ReadOnly=false mới hoạt động
+                if (!canEdit) dgvData.ReadOnly = true;
+
                 _allowPartialReturn = false;
                 txtHanTra2.Visible = false;
-                btnXacNhanTra.Enabled = !isPendingApprovalView && !isPending;
+                btnXacNhanTra.Enabled = canEdit;
                 btnTraThieuLoi.Enabled = !isPendingApprovalView && !isPending;
             }
             catch (Exception ex)
@@ -203,14 +256,9 @@ namespace FrmProject.GUI
             }
         }
 
-        private void ApplyPendingReturnQuantities(int ticketID, DataTable dt)
-        {
-            ReturnTicketService.ApplyPendingReturnQuantities(ticketID, dt);
-        }
-
         private void BtnXacNhanTra_Click(object sender, EventArgs e)
         {
-            if (_selectedTicketID < 0)
+            if (_selectedTicketID <= 0)
             {
                 MessageBox.Show("Vui lòng chọn phiếu cần trả!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -222,18 +270,21 @@ namespace FrmProject.GUI
 
             try
             {
-                if (dgvData.DataSource is not DataTable dt || dt.Rows.Count == 0)
+                if (dgvData.DataSource is not List<ReturnTicketItemModel> dt || dt.Count == 0)
                 {
                     MessageBox.Show("Phiếu này không có thiết bị để trả!", "Thông báo",
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
+                // Commit bất kỳ ô ComboBox đang edit dở
+                dgvData.EndEdit();
+
                 var returnItems = new List<(int DeviceID, int InstanceID, int BorrowQty, int ReturnQty, string Note)>();
-                foreach (DataRow row in dt.Rows)
+                foreach (var row in dt)
                 {
-                    int borrowedQty = Convert.ToInt32(row["SL mượn"]);
-                    int returnQty = Convert.ToInt32(row["SL trả"]);
+                    int borrowedQty = row.BorrowQty;
+                    int returnQty = row.ReturnQty;
 
                     if (returnQty < 0 || returnQty > borrowedQty)
                     {
@@ -243,29 +294,37 @@ namespace FrmProject.GUI
                     }
 
                     returnItems.Add((
-                        Convert.ToInt32(row["DeviceID"]),
-                        row["InstanceID"] == DBNull.Value ? 0 : Convert.ToInt32(row["InstanceID"]),
+                        row.DeviceID,
+                        row.InstanceID,
                         borrowedQty,
                         returnQty,
                         GetReturnCondition(row)));
                 }
 
-                if (returnItems.All(item => item.ReturnQty == 0))
+                bool hasValidItem = false;
+                // Bug fix: kiểm tra trực tiếp từ row.ReturnCondition thay vì parse lại từ Note
+                bool hasIssue = dt.Any(row =>
+                    !IsGoodReturnCondition(row.ReturnCondition) ||
+                    row.ReturnQty < row.BorrowQty);
+                if (hasIssue) _allowPartialReturn = true;
+
+                foreach (var item in returnItems)
                 {
-                    MessageBox.Show("Cần nhập ít nhất một thiết bị có số lượng trả lớn hơn 0.", "Thông báo",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
+                    bool isReturned = item.ReturnQty > 0;
+                    bool isGoodCondition = string.IsNullOrWhiteSpace(item.Note) ||
+                                           item.Note.StartsWith("Tốt", StringComparison.OrdinalIgnoreCase);
+                    bool isReportedIssue = !isGoodCondition;
+
+                    if (isReturned || isReportedIssue)
+                    {
+                        hasValidItem = true;
+                    }
                 }
 
-                if (_allowPartialReturn &&
-                    returnItems.Any(item => item.ReturnQty < item.BorrowQty) &&
-                    string.IsNullOrWhiteSpace(txtHanTra2.Text) &&
-                    string.IsNullOrWhiteSpace(txtGhiChuTra.Text))
+                if (!hasValidItem)
                 {
-                    MessageBox.Show("Vui lòng nhập ghi chú/lý do khi trả thiếu hoặc thiết bị lỗi.", "Thông báo",
+                    MessageBox.Show("Cần nhập ít nhất một thiết bị được trả hoặc báo lỗi/mất.", "Thông báo",
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtHanTra2.Visible = true;
-                    txtHanTra2.Focus();
                     return;
                 }
 
@@ -301,7 +360,7 @@ namespace FrmProject.GUI
                 return;
             }
 
-            if (dgvData.DataSource is not DataTable dt || dt.Rows.Count == 0)
+            if (dgvData.DataSource is not List<ReturnTicketItemModel> dt || dt.Count == 0)
             {
                 MessageBox.Show("Phiếu này không có thiết bị để xử lý trả thiếu/lỗi.", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -314,40 +373,31 @@ namespace FrmProject.GUI
             _allowPartialReturn = true;
             dgvData.ReadOnly = false;
             dgvData.AllowUserToAddRows = false;
-            if (dgvData.Columns.Contains("Tên thiết bị"))
-                dgvData.Columns["Tên thiết bị"].ReadOnly = true;
-            if (dgvData.Columns.Contains("Mã tài sản"))
-                dgvData.Columns["Mã tài sản"].ReadOnly = true;
-            if (dgvData.Columns.Contains("SL mượn"))
-                dgvData.Columns["SL mượn"].ReadOnly = true;
-            if (dgvData.Columns.Contains("DeviceID"))
-                dgvData.Columns["DeviceID"].ReadOnly = true;
-            if (dgvData.Columns.Contains("InstanceID"))
-                dgvData.Columns["InstanceID"].ReadOnly = true;
-            if (dgvData.Columns.Contains("SL trả"))
-                dgvData.Columns["SL trả"].ReadOnly = false;
-            if (dgvData.Columns.Contains("Tình trạng khi trả"))
-                dgvData.Columns["Tình trạng khi trả"].ReadOnly = false;
-            if (dgvData.Columns.Contains("Ghi chú"))
-                dgvData.Columns["Ghi chú"].ReadOnly = false;
+            foreach (DataGridViewColumn col in dgvData.Columns)
+            {
+                if (col.Name == "ReturnQty" || col.Name == "ReturnCondition" || col.Name == "Note")
+                    col.ReadOnly = false;
+                else
+                    col.ReadOnly = true;
+            }
 
             txtHanTra2.Visible = true;
             txtHanTra2.Text = "Có thiết bị trả thiếu/lỗi. Vui lòng kiểm tra tình trạng khi trả và ghi chú cảnh báo trước khi duyệt.";
             txtGhiChuTra.Text = BuildReturnIssueWarning(dt);
         }
 
-        private static string BuildReturnIssueWarning(DataTable table)
+        private static string BuildReturnIssueWarning(List<ReturnTicketItemModel> table)
         {
             List<string> warnings = new();
-            foreach (DataRow row in table.Rows)
+            foreach (var row in table)
             {
-                int borrowedQty = Convert.ToInt32(row["SL mượn"]);
-                int returnQty = Convert.ToInt32(row["SL trả"]);
-                string condition = GetCellText(row, "Tình trạng khi trả");
-                string note = GetCellText(row, "Ghi chú");
+                int borrowedQty = row.BorrowQty;
+                int returnQty = row.ReturnQty;
+                string condition = row.ReturnCondition;
+                string note = row.Note;
 
-                if (returnQty < borrowedQty || !IsGoodReturnCondition(condition))
-                    warnings.Add($"{row["Tên thiết bị"]}: trả {returnQty}/{borrowedQty}, tình trạng {condition}" +
+                if (returnQty > 0 && (returnQty < borrowedQty || !IsGoodReturnCondition(condition)))
+                    warnings.Add($"{row.DeviceName}: trả {returnQty}/{borrowedQty}, tình trạng {condition}" +
                                  (string.IsNullOrWhiteSpace(note) ? string.Empty : $" - {note}"));
             }
 
@@ -358,13 +408,13 @@ namespace FrmProject.GUI
 
         private void DgvData_CellValidating(object? sender, DataGridViewCellValidatingEventArgs e)
         {
-            if (!_allowPartialReturn || e.RowIndex < 0 || !dgvData.Columns.Contains("SL trả"))
+            if (!_allowPartialReturn || e.RowIndex < 0 || !dgvData.Columns.Contains("ReturnQty"))
                 return;
 
-            if (dgvData.Columns[e.ColumnIndex].Name != "SL trả")
+            if (dgvData.Columns[e.ColumnIndex].Name != "ReturnQty")
                 return;
 
-            int borrowedQty = Convert.ToInt32(dgvData.Rows[e.RowIndex].Cells["SL mượn"].Value);
+            int borrowedQty = Convert.ToInt32(dgvData.Rows[e.RowIndex].Cells["BorrowQty"].Value);
             if (!int.TryParse(e.FormattedValue?.ToString(), out int returnQty) || returnQty < 0 || returnQty > borrowedQty)
             {
                 e.Cancel = true;
@@ -373,9 +423,15 @@ namespace FrmProject.GUI
             }
         }
 
+        // Ngăn crash khi ComboBox gặp giá trị không có trong danh sách
+        private static void DgvData_DataError(object? sender, DataGridViewDataErrorEventArgs e)
+        {
+            e.Cancel = true; // bỏ qua lỗi, không ném exception
+        }
+
         private void BtnInBienBan_Click(object sender, EventArgs e)
         {
-            if (_selectedTicketID <= 0 || dgvData.DataSource is not DataTable dt || dt.Rows.Count == 0)
+            if (_selectedTicketID <= 0 || dgvData.DataSource is not List<ReturnTicketItemModel> dt || dt.Count == 0)
             {
                 MessageBox.Show("Vui lòng chọn phiếu trước khi in biên bản.", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -402,7 +458,7 @@ namespace FrmProject.GUI
             preview.ShowDialog(this);
         }
 
-        private string BuildReturnReportText(DataTable dt)
+        private string BuildReturnReportText(List<ReturnTicketItemModel> dt)
         {
             List<string> lines = new List<string>
             {
@@ -417,9 +473,9 @@ namespace FrmProject.GUI
                 "Danh sach thiet bi:"
             };
 
-            foreach (DataRow row in dt.Rows)
+            foreach (var row in dt)
             {
-                lines.Add($"- {row["Tên thiết bị"]} | Ma TS: {row["Mã tài sản"]} | Muon: {row["SL mượn"]} | Tra: {row["SL trả"]} | TT muon: {GetCellText(row, "Tình trạng khi mượn")} | TT tra: {GetCellText(row, "Tình trạng khi trả")} | Ghi chu: {row["Ghi chú"]}");
+                lines.Add($"- {row.DeviceName} | Ma TS: {row.AssetCode} | Muon: {row.BorrowQty} | Tra: {row.ReturnQty} | TT muon: {row.BorrowCondition} | TT tra: {row.ReturnCondition} | Ghi chu: {row.Note}");
             }
 
             if (!string.IsNullOrWhiteSpace(txtGhiChuTra.Text))
@@ -505,10 +561,10 @@ namespace FrmProject.GUI
                 : baseNote + " | " + string.Join(" | ", issueNotes);
         }
 
-        private static string GetReturnCondition(DataRow row)
+        private static string GetReturnCondition(ReturnTicketItemModel row)
         {
-            string returnCondition = GetCellText(row, "Tình trạng khi trả");
-            string note = GetCellText(row, "Ghi chú");
+            string returnCondition = row.ReturnCondition;
+            string note = row.Note;
             string condition = string.IsNullOrWhiteSpace(returnCondition) ? "Tốt" : returnCondition.Trim();
 
             return string.IsNullOrWhiteSpace(note)
@@ -521,18 +577,6 @@ namespace FrmProject.GUI
             return string.IsNullOrWhiteSpace(condition) ||
                    condition.Trim().Equals("Tốt", StringComparison.OrdinalIgnoreCase);
         }
-
-        private static string GetCellText(DataRow row, string columnName)
-        {
-            if (!row.Table.Columns.Contains(columnName) || row[columnName] == DBNull.Value)
-                return string.Empty;
-
-            return row[columnName]?.ToString() ?? string.Empty;
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        //  ADMIN: Pending Return Approval Panel
-        // ═══════════════════════════════════════════════════════════════
 
         private void SetupPendingReturnPanel()
         {
@@ -554,9 +598,23 @@ namespace FrmProject.GUI
             if (_dgvPendingReturns == null) return;
             try
             {
-                _dgvPendingReturns.DataSource = ReturnApprovalService.GetPendingReturnTickets();
-                if (_dgvPendingReturns.Columns.Contains(Col.TicketID))
-                    _dgvPendingReturns.Columns[Col.TicketID].Visible = false;
+                var list = ReturnApprovalService.GetPendingReturnTickets();
+                _dgvPendingReturns.AutoGenerateColumns = true;
+                _dgvPendingReturns.DataSource = list;
+                if (_dgvPendingReturns.Columns.Contains("TicketID"))
+                    _dgvPendingReturns.Columns["TicketID"].Visible = false;
+
+                if (_dgvPendingReturns.Columns.Contains("TicketCode"))
+                    _dgvPendingReturns.Columns["TicketCode"].HeaderText = "Số phiếu";
+                if (_dgvPendingReturns.Columns.Contains("BorrowerName"))
+                    _dgvPendingReturns.Columns["BorrowerName"].HeaderText = "Người mượn";
+                if (_dgvPendingReturns.Columns.Contains("BorrowDate"))
+                    _dgvPendingReturns.Columns["BorrowDate"].HeaderText = "Ngày mượn";
+                if (_dgvPendingReturns.Columns.Contains("ExpectedReturnDate"))
+                    _dgvPendingReturns.Columns["ExpectedReturnDate"].HeaderText = "Hạn trả";
+                if (_dgvPendingReturns.Columns.Contains("Note"))
+                    _dgvPendingReturns.Columns["Note"].HeaderText = "Ghi chú";
+
                 SyncPendingReturnSelection();
             }
             catch (Exception ex)

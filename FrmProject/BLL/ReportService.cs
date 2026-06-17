@@ -1,24 +1,19 @@
-using System.Data;
+using System;
+using System.Collections.Generic;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class ReportService : IReportService
+    public class ReportService(IReportRepository reportRepository) : IReportService
     {
-        private readonly IReportRepository _reportRepository;
+        public List<MonthlyStatsModel> GetMonthlyStats(DateTime from, DateTime to) =>
+            reportRepository.GetMonthlyStats(from, to);
 
-        public ReportService(IReportRepository reportRepository)
-        {
-            _reportRepository = reportRepository;
-        }
+        public List<TopDeviceModel> GetTopDevices(DateTime from, DateTime to) =>
+            reportRepository.GetTopDevices(from, to);
 
-        public DataTable GetMonthlyStats(DateTime from, DateTime to) =>
-            _reportRepository.GetMonthlyStats(from, to);
-
-        public DataTable GetTopDevices(DateTime from, DateTime to) =>
-            _reportRepository.GetTopDevices(from, to);
-
-        public DataTable GetOverdueTickets(DateTime from, DateTime to) =>
-            _reportRepository.GetOverdueTickets(from, to);
+        public List<OverdueTicketModel> GetOverdueTickets(DateTime from, DateTime to) =>
+            reportRepository.GetOverdueTickets(from, to);
     }
 }

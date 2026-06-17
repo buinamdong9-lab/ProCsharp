@@ -1,20 +1,21 @@
-using Microsoft.Data.SqlClient;
-using System.Data;
 using System;
-using System.Linq;
 using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 using Dapper;
+using FrmProject.Models;
 
 namespace FrmProject.DAL
 {
     public class RecycleBinRepository : IRecycleBinRepository
     {
-        public DataTable Load(string itemType, string keyword)
+        public List<RecycleBinItemModel> Load(string itemType, string keyword)
         {
             using SqlConnection conn = DbHelper.GetConnection();
             conn.Open();
 
-            DataTable result = CreateResultTable();
+            List<RecycleBinItemModel> result = new();
             if (itemType == "Tất cả" || itemType == "Thiết bị")
                 AppendDeletedDevices(conn, result, keyword);
             if (itemType == "Tất cả" || itemType == "Mã cá thể")
@@ -99,53 +100,42 @@ namespace FrmProject.DAL
             }
         }
 
-        private static DataTable CreateResultTable()
-        {
-            DataTable table = new();
-            table.Columns.Add("Loại", typeof(string));
-            table.Columns.Add("ID", typeof(int));
-            table.Columns.Add("Mã", typeof(string));
-            table.Columns.Add("Tên", typeof(string));
-            table.Columns.Add("Trạng thái", typeof(string));
-            table.Columns.Add("Ghi chú", typeof(string));
-            return table;
-        }
-
-        private static void AppendDeletedDevices(SqlConnection conn, DataTable result, string keyword)
+        private static void AppendDeletedDevices(SqlConnection conn, List<RecycleBinItemModel> result, string keyword)
         {
             AppendRows(conn, result, "Thiết bị", "sp_GetDeletedDevices", new { status = DeviceStatus.Retired, kw = keyword.Trim() });
         }
 
-        private static void AppendDeletedInstances(SqlConnection conn, DataTable result, string keyword)
+        private static void AppendDeletedInstances(SqlConnection conn, List<RecycleBinItemModel> result, string keyword)
         {
             AppendRows(conn, result, "Mã cá thể", "sp_GetDeletedInstances", new { status = DeviceStatus.Retired, kw = keyword.Trim() });
         }
 
-        private static void AppendDeletedRooms(SqlConnection conn, DataTable result, string keyword)
+        private static void AppendDeletedRooms(SqlConnection conn, List<RecycleBinItemModel> result, string keyword)
         {
             AppendRows(conn, result, "Phòng học", "sp_GetDeletedRooms", new { status = RoomStatus.Retired, kw = keyword.Trim() });
         }
 
-        private static void AppendDeletedUsers(SqlConnection conn, DataTable result, string keyword)
+        private static void AppendDeletedUsers(SqlConnection conn, List<RecycleBinItemModel> result, string keyword)
         {
             AppendRows(conn, result, "Người dùng", "sp_GetDeletedUsers", new { kw = keyword.Trim() });
         }
 
-        private static void AppendRows(SqlConnection conn, DataTable result, string type, string spName, object param)
+        private static void AppendRows(SqlConnection conn, List<RecycleBinItemModel> result, string type, string spName, object param)
         {
             var rows = conn.Query(spName, param, commandType: CommandType.StoredProcedure);
             foreach (var row in rows)
             {
                 var dict = (IDictionary<string, object>)row;
                 var keys = dict.Keys.ToList();
-                result.Rows.Add(
-                    type,
-                    dict[keys[0]] != null ? Convert.ToInt32(dict[keys[0]]) : 0,
-                    dict[keys[1]]?.ToString() ?? string.Empty,
-                    dict[keys[2]]?.ToString() ?? string.Empty,
-                    dict[keys[3]]?.ToString() ?? string.Empty,
-                    dict[keys[4]]?.ToString() ?? string.Empty
-                );
+                result.Add(new RecycleBinItemModel
+                {
+                    ItemType = type,
+                    ID = dict[keys[0]] != null ? Convert.ToInt32(dict[keys[0]]) : 0,
+                    Code = dict[keys[1]]?.ToString() ?? string.Empty,
+                    Name = dict[keys[2]]?.ToString() ?? string.Empty,
+                    Status = dict[keys[3]]?.ToString() ?? string.Empty,
+                    Note = dict[keys[4]]?.ToString() ?? string.Empty
+                });
             }
         }
     }

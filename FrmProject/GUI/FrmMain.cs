@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.GUI
 {
@@ -219,19 +222,31 @@ namespace FrmProject.GUI
             }
         }
 
-        private void LoadBorrowingList(DataTable dt)
+        private void LoadBorrowingList(List<DashboardBorrowingItemModel> list)
         {
-            dgvData.DataSource = dt;
+            dgvData.DataSource = list;
+
+            if (dgvData.Columns.Count > 0)
+            {
+                dgvData.Columns["DeviceCode"].HeaderText = "Mã TB";
+                dgvData.Columns["DeviceName"].HeaderText = "Tên Thiết Bị";
+                dgvData.Columns["Quantity"].HeaderText = "Số lượng";
+                dgvData.Columns["BorrowerName"].HeaderText = "Người mượn";
+                dgvData.Columns["BorrowDate"].HeaderText = "Ngày Mượn";
+                dgvData.Columns["ExpectedReturnDate"].HeaderText = "Hạn Trả";
+            }
 
             foreach (DataGridViewRow row in dgvData.Rows)
             {
-                if (row.Cells[Col.HanTra].Value != DBNull.Value)
-                    if (Convert.ToDateTime(row.Cells[Col.HanTra].Value) < DateTime.Now)
+                if (row.DataBoundItem is DashboardBorrowingItemModel item)
+                {
+                    if (item.ExpectedReturnDate < DateTime.Now)
                         row.DefaultCellStyle.BackColor = Color.FromArgb(255, 220, 220);
+                }
             }
         }
 
-        private void LoadMonthlyBorrowStats(DataTable dt)
+        private void LoadMonthlyBorrowStats(List<DashboardMonthlyStatsModel> list)
         {
             if (pnlContainerMuonTheoThang == null)
                 return;
@@ -246,7 +261,7 @@ namespace FrmProject.GUI
                 }
             }
 
-            if (dt.Rows.Count == 0)
+            if (list.Count == 0)
             {
                 Label empty = new Label
                 {
@@ -261,8 +276,7 @@ namespace FrmProject.GUI
                 return;
             }
 
-            int maxQuantity = dt.Rows.Cast<DataRow>()
-                .Select(row => Convert.ToInt32(row["Số thiết bị"]))
+            int maxQuantity = list.Select(item => item.DeviceCount)
                 .DefaultIfEmpty(1)
                 .Max();
             maxQuantity = Math.Max(1, maxQuantity);
@@ -273,11 +287,11 @@ namespace FrmProject.GUI
             int valueWidth = 88;
             int availableBarWidth = Math.Max(80, pnlContainerMuonTheoThang.ClientSize.Width - labelWidth - valueWidth - 36);
 
-            foreach (DataRow row in dt.Rows)
+            foreach (var item in list)
             {
-                string month = row["Tháng"]?.ToString() ?? string.Empty;
-                int ticketCount = Convert.ToInt32(row["Số phiếu"]);
-                int quantity = Convert.ToInt32(row["Số thiết bị"]);
+                string month = item.Month;
+                int ticketCount = item.TicketCount;
+                int quantity = item.DeviceCount;
                 int barWidth = Math.Max(6, (int)Math.Round(availableBarWidth * (quantity / (double)maxQuantity)));
 
                 Label monthLabel = new Label
@@ -507,8 +521,8 @@ namespace FrmProject.GUI
                 btnNextDashboard.Enabled = false;
                 btnLastDashboard.Enabled = false;
 
-                DataTable dt = await Task.Run(() => DashboardService.LoadBorrowingListOnly(_currentDashboardPage, DashboardPageSize));
-                LoadBorrowingList(dt);
+                var list = await Task.Run(() => DashboardService.LoadBorrowingListOnly(_currentDashboardPage, DashboardPageSize));
+                LoadBorrowingList(list);
             }
             catch (Exception ex)
             {

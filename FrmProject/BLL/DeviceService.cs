@@ -1,26 +1,21 @@
-using System.Data;
+using System;
+using System.Collections.Generic;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class DeviceService : IDeviceService
+    public class DeviceService(IDeviceRepository deviceRepository) : IDeviceService
     {
-        private readonly IDeviceRepository _deviceRepository;
-
-        public DeviceService(IDeviceRepository deviceRepository)
-        {
-            _deviceRepository = deviceRepository;
-        }
-
         public int GetTotalDevicesCount(string keyword, string category, string status) =>
-            _deviceRepository.GetTotalDevicesCount(keyword, category, status);
+            deviceRepository.GetTotalDevicesCount(keyword, category, status);
 
-        public DataTable GetDevicesPaged(int pageNumber, int pageSize, string keyword, string category, string status) =>
-            _deviceRepository.GetDevicesPaged(pageNumber, pageSize, keyword, category, status);
+        public List<DeviceDisplayModel> GetDevicesPaged(int pageNumber, int pageSize, string keyword, string category, string status) =>
+            deviceRepository.GetDevicesPaged(pageNumber, pageSize, keyword, category, status);
 
-        public DataTable GetCategories() => _deviceRepository.GetCategories();
-        public DataTable GetDevicesByRoom(string roomCode) => _deviceRepository.GetDevicesByRoom(roomCode);
-        public string GenerateDeviceCode() => _deviceRepository.GenerateDeviceCode();
+        public List<CategoryModel> GetCategories() => deviceRepository.GetCategories();
+        public List<RoomDeviceModel> GetDevicesByRoom(string roomCode) => deviceRepository.GetDevicesByRoom(roomCode);
+        public string GenerateDeviceCode() => deviceRepository.GenerateDeviceCode();
 
         public void SaveDevice(
             int deviceId,
@@ -29,8 +24,8 @@ namespace FrmProject.BLL
             string categoryName,
             string roomNameOrCode,
             int totalQuantity,
-            int borrowedQuantity,
-            int availableQuantity,
+            int selectedTotalQuantity,
+            int selectedAvailableQuantity,
             string status,
             string note)
         {
@@ -40,20 +35,24 @@ namespace FrmProject.BLL
                 throw new ArgumentException("Mã thiết bị không được để trống.");
             if (totalQuantity < 0)
                 throw new ArgumentException("Tổng số lượng không được nhỏ hơn 0.");
-            if (borrowedQuantity < 0)
-                throw new ArgumentException("Số lượng đang mượn không được nhỏ hơn 0.");
-            if (availableQuantity < 0)
-                throw new ArgumentException("Số lượng có sẵn không được nhỏ hơn 0.");
-            if (availableQuantity + borrowedQuantity > totalQuantity)
-                throw new ArgumentException("Tổng số lượng có sẵn và đang mượn không được vượt quá tổng số lượng thực tế.");
+            if (selectedTotalQuantity < 0)
+                throw new ArgumentException("Số lượng tổng ban đầu không hợp lệ.");
+            if (selectedAvailableQuantity < 0)
+                throw new ArgumentException("Số lượng khả dụng ban đầu không hợp lệ.");
 
-            _deviceRepository.SaveDevice(deviceId, deviceCode, deviceName, categoryName, roomNameOrCode,
-                totalQuantity, borrowedQuantity, availableQuantity, status, note);
+            int currentBorrowed = selectedTotalQuantity - selectedAvailableQuantity;
+            if (currentBorrowed < 0)
+                throw new ArgumentException("Số lượng đã mượn không hợp lệ.");
+            if (totalQuantity < currentBorrowed)
+                throw new ArgumentException($"Không thể giảm tổng số lượng xuống {totalQuantity} vì hiện có {currentBorrowed} thiết bị đang được mượn.");
+
+            deviceRepository.SaveDevice(deviceId, deviceCode, deviceName, categoryName, roomNameOrCode,
+                totalQuantity, selectedTotalQuantity, selectedAvailableQuantity, status, note);
         }
 
-        public void DeleteDevice(int deviceId) => _deviceRepository.DeleteDevice(deviceId);
+        public void DeleteDevice(int deviceId) => deviceRepository.DeleteDevice(deviceId);
 
-        public DataTable GetAllDevices() => _deviceRepository.GetAllDevices();
-        public List<DeviceDisplayModel> GetAvailableDevices() => _deviceRepository.GetAvailableDevices();
+        public List<DeviceDisplayModel> GetAllDevices() => deviceRepository.GetAllDevices();
+        public List<DeviceDisplayModel> GetAvailableDevices() => deviceRepository.GetAvailableDevices();
     }
 }

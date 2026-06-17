@@ -1,14 +1,8 @@
 namespace FrmProject.Models
 {
-    public sealed class LookupItem
+    public sealed class LookupItem(int id, string text)
     {
-        public int Id { get; }
-        public string Text { get; }
-
-        public LookupItem(int id, string text)
-        {
-            Id = id;
-            Text = text;
-        }
+        public int Id { get; } = id;
+        public string Text { get; } = text;
     }
 }

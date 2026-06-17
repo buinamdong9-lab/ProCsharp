@@ -1,28 +1,37 @@
-using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 using Dapper;
 using FrmProject.Models;
 
 namespace FrmProject.DAL
 {
-    /// <summary>
-    /// Renamed from RoomDao → RoomRepository for naming consistency.
-    /// </summary>
     public class RoomRepository : IRoomRepository
     {
-        public DataTable GetAllRooms()
+        public List<RoomDisplayModel> GetAllRooms()
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader("sp_GetAllRooms", commandType: CommandType.StoredProcedure));
-            return dt;
+            var rows = conn.Query("sp_GetAllRooms", commandType: CommandType.StoredProcedure);
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new RoomDisplayModel
+                {
+                    RoomCode = dict["Mã phòng"]?.ToString() ?? "",
+                    RoomName = dict["Tên phòng"]?.ToString() ?? "",
+                    RoomType = dict["Loại"]?.ToString() ?? "",
+                    Floor = dict["Tầng"]?.ToString() ?? "",
+                    Capacity = Convert.ToInt32(dict["Sức chứa"]),
+                    Status = dict["Trạng thái"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
-        public DataTable SearchRooms(string keyword, string type, string status)
+        public List<RoomDisplayModel> SearchRooms(string keyword, string type, string status)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_SearchRooms",
                 new
                 {
@@ -30,8 +39,20 @@ namespace FrmProject.DAL
                     type = string.IsNullOrWhiteSpace(type) ? null : type,
                     status = string.IsNullOrWhiteSpace(status) ? null : status
                 },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new RoomDisplayModel
+                {
+                    RoomCode = dict["Mã phòng"]?.ToString() ?? "",
+                    RoomName = dict["Tên phòng"]?.ToString() ?? "",
+                    RoomType = dict["Loại"]?.ToString() ?? "",
+                    Floor = dict["Tầng"]?.ToString() ?? "",
+                    Capacity = Convert.ToInt32(dict["Sức chứa"]),
+                    Status = dict["Trạng thái"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
         /// <summary>Returns (RoomID, Floor, Capacity, Note) or null if not found.</summary>

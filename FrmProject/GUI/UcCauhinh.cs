@@ -1,6 +1,7 @@
-using FrmProject.GUI;
+using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using FrmProject.Models;
 
 namespace FrmProject.GUI
 {
@@ -145,14 +146,14 @@ namespace FrmProject.GUI
         {
             try
             {
-                DataTable dt = SettingsService.GetDeviceCategories();
+                List<DeviceCategoryStatsModel> list = SettingsService.GetDeviceCategories();
 
                 dgvData.AutoGenerateColumns = false;
-                colMaLoai.DataPropertyName = "Mã loại";
-                colTenLoai.DataPropertyName = "Tên loại";
-                colSoThietBi.DataPropertyName = "Số thiết bị";
-                colThaoTac.DataPropertyName = "Thao tác";
-                dgvData.DataSource = dt;
+                colMaLoai.DataPropertyName = "CategoryID";
+                colTenLoai.DataPropertyName = "CategoryName";
+                colSoThietBi.DataPropertyName = "DeviceCount";
+                colThaoTac.DataPropertyName = "Action";
+                dgvData.DataSource = list;
             }
             catch (Exception ex)
             {
@@ -165,9 +166,15 @@ namespace FrmProject.GUI
         {
             try
             {
-                DataTable dt = SettingsService.GetRoles();
-                dgvData2.DataSource = dt;
+                List<RoleStatsModel> list = SettingsService.GetRoles();
+                dgvData2.DataSource = list;
                 dgvData2.AutoGenerateColumns = true;
+                if (dgvData2.Columns.Count > 0)
+                {
+                    dgvData2.Columns["RoleID"].HeaderText = "Mã vai trò";
+                    dgvData2.Columns["RoleName"].HeaderText = "Tên vai trò";
+                    dgvData2.Columns["UserCount"].HeaderText = "Số người dùng";
+                }
             }
             catch (Exception ex) { AppLogger.Error($"[UcCauhinh] Lỗi LoadRoles", ex); }
         }

@@ -1,5 +1,8 @@
-using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 using Dapper;
 using FrmProject.Models;
 
@@ -7,15 +10,24 @@ namespace FrmProject.DAL
 {
     public class DeviceInstanceRepository : IDeviceInstanceRepository
     {
-        public DataTable GetByDevice(int deviceId)
+        public List<DeviceInstanceDisplayModel> GetByDevice(int deviceId)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_GetInstancesByDevice",
                 new { deviceId },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new DeviceInstanceDisplayModel
+                {
+                    InstanceID = Convert.ToInt32(dict["InstanceID"]),
+                    AssetCode = dict["Mã tài sản"]?.ToString() ?? "",
+                    Status = dict["Trạng thái"]?.ToString() ?? "",
+                    Condition = dict["Tình trạng"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
         /// <summary>
@@ -51,7 +63,7 @@ namespace FrmProject.DAL
             string candidate;
             do
             {
-                candidate = $@"{deviceCode}\{seq:D3}";
+                candidate = $"{deviceCode}-{seq:D3}";
                 seq++;
             } while (existingCodes.Contains(candidate));
 

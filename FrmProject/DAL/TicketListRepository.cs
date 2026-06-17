@@ -1,5 +1,8 @@
-using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 using Dapper;
 using FrmProject.Models;
 
@@ -7,11 +10,10 @@ namespace FrmProject.DAL
 {
     public class TicketListRepository : ITicketListRepository
     {
-        public DataTable SearchTickets(DateTime from, DateTime to, string keyword, string statusFilter, int currentUserId, AppRole appRole)
+        public List<TicketHistoryModel> SearchTickets(DateTime from, DateTime to, string keyword, string statusFilter, int currentUserId, AppRole appRole)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_SearchTickets",
                 new
                 {
@@ -27,8 +29,25 @@ namespace FrmProject.DAL
                     borrowingStatus = BorrowTicketStatus.Borrowing,
                     pendingStatus = BorrowTicketStatus.Pending
                 },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new TicketHistoryModel
+                {
+                    TicketID = Convert.ToInt32(dict["ID phiếu"]),
+                    TicketCode = dict["Số phiếu"]?.ToString() ?? "",
+                    CreatedDate = dict["Ngày lập"]?.ToString() ?? "",
+                    BorrowerName = dict["Người mượn"]?.ToString() ?? "",
+                    RoomName = dict["Phòng"]?.ToString() ?? "",
+                    Quantity = Convert.ToInt32(dict["Số lượng"]),
+                    BorrowDate = dict["Ngày mượn"]?.ToString() ?? "",
+                    ExpectedReturnDate = dict["Hạn trả"]?.ToString() ?? "",
+                    ReturnDate = dict["Ngày trả"]?.ToString() ?? "",
+                    Status = dict["Trạng thái"]?.ToString() ?? "",
+                    Note = dict["Ghi chú"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
         public TicketListStats GetStats(int currentUserId, AppRole appRole)
@@ -70,8 +89,8 @@ namespace FrmProject.DAL
             if (detail == null)
                 return null;
 
-            DataTable items = LoadBorrowDetailItems(conn, ticketId);
-            if (items.Rows.Count == 0 && detail.StatusText == "Đã trả")
+            var items = LoadBorrowDetailItems(conn, ticketId);
+            if (items.Count == 0 && detail.StatusText == "Đã trả")
                 items = LoadReturnedRequestItems(conn, ticketId);
 
             return new TicketDetailView
@@ -90,24 +109,44 @@ namespace FrmProject.DAL
             };
         }
 
-        private static DataTable LoadBorrowDetailItems(SqlConnection conn, int ticketId)
+        private static List<TicketDetailItemModel> LoadBorrowDetailItems(SqlConnection conn, int ticketId)
         {
-            DataTable items = new DataTable();
-            items.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_LoadBorrowDetailItems",
                 new { ticketId },
-                commandType: CommandType.StoredProcedure));
-            return items;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new TicketDetailItemModel
+                {
+                    DeviceCode = dict["Mã TB"]?.ToString() ?? "",
+                    DeviceName = dict["Tên thiết bị"]?.ToString() ?? "",
+                    Quantity = Convert.ToInt32(dict["Số lượng"]),
+                    BorrowCondition = dict["Tình trạng khi mượn"]?.ToString() ?? "",
+                    ReturnCondition = dict["Tình trạng khi trả"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
-        private static DataTable LoadReturnedRequestItems(SqlConnection conn, int ticketId)
+        private static List<TicketDetailItemModel> LoadReturnedRequestItems(SqlConnection conn, int ticketId)
         {
-            DataTable items = new DataTable();
-            items.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_LoadReturnedRequestItems",
                 new { ticketId },
-                commandType: CommandType.StoredProcedure));
-            return items;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new TicketDetailItemModel
+                {
+                    DeviceCode = dict["Mã TB"]?.ToString() ?? "",
+                    DeviceName = dict["Tên thiết bị"]?.ToString() ?? "",
+                    Quantity = Convert.ToInt32(dict["Số lượng"]),
+                    BorrowCondition = dict["Tình trạng khi mượn"]?.ToString() ?? "",
+                    ReturnCondition = dict["Tình trạng khi trả"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
     }
 }

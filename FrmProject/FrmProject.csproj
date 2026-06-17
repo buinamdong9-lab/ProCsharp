@@ -21,7 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Data\Migrations\*.sql" />
+    <EmbeddedResource Include="..\Database\Migrations\*.sql" Link="Data\Migrations\%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\Database\StoredProcedures\*.sql" Link="StoredProcedures\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

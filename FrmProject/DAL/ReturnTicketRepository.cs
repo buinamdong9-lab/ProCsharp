@@ -1,7 +1,8 @@
-using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Collections.Generic;
+using Microsoft.Data.SqlClient;
 using Dapper;
 using FrmProject.Models;
 
@@ -15,6 +16,7 @@ namespace FrmProject.DAL
         {
             _returnRequestRepository = returnRequestRepository;
         }
+
         public List<LookupItem> SearchBorrowingTickets(int currentUserId, AppRole appRole, string keyword = "")
         {
             using SqlConnection conn = DbHelper.GetConnection();
@@ -27,7 +29,15 @@ namespace FrmProject.DAL
                     keyword = string.IsNullOrWhiteSpace(keyword) ? null : keyword
                 },
                 commandType: CommandType.StoredProcedure)
-                .Select(row => new LookupItem((int)row.TicketID, (string)row.DisplayText))
+                .Select(row => {
+                    var dict = (IDictionary<string, object>)row;
+                    string text = "";
+                    if (dict.TryGetValue("DisplayText", out var val) && val != null)
+                        text = val.ToString()!;
+                    else if (dict.TryGetValue("DisplayName", out var val2) && val2 != null)
+                        text = val2.ToString()!;
+                    return new LookupItem((int)row.TicketID, text);
+                })
                 .ToList();
         }
 
@@ -44,35 +54,51 @@ namespace FrmProject.DAL
             if (details == null)
                 return null;
 
-            DataTable dt = new();
-            dt.Load(conn.ExecuteReader("sp_GetReturnTicketItems", new { id = ticketId }, commandType: CommandType.StoredProcedure));
-            details.Items = dt;
+            var rows = conn.Query(
+                "sp_GetReturnTicketItems",
+                new { id = ticketId },
+                commandType: CommandType.StoredProcedure);
+
+            details.Items = rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new ReturnTicketItemModel
+                {
+                    DeviceID = Convert.ToInt32(dict["DeviceID"]),
+                    InstanceID = Convert.ToInt32(dict["InstanceID"]),
+                    AssetCode = dict["Mã tài sản"]?.ToString() ?? "",
+                    DeviceName = dict["Tên thiết bị"]?.ToString() ?? "",
+                    BorrowQty = Convert.ToInt32(dict["SL mượn"]),
+                    ReturnQty = Convert.ToInt32(dict["SL trả"]),
+                    BorrowCondition = dict["Tình trạng khi mượn"]?.ToString() ?? "",
+                    ReturnCondition = dict["Tình trạng khi trả"]?.ToString() ?? "",
+                    Note = dict["Ghi chú"]?.ToString() ?? ""
+                };
+            }).ToList();
 
             return details;
         }
 
-        public void ApplyPendingReturnQuantities(int ticketId, DataTable dt)
+        public void ApplyPendingReturnQuantities(int ticketId, List<ReturnTicketItemModel> items)
         {
             using SqlConnection conn = DbHelper.GetConnection();
             conn.Open();
             if (!_returnRequestRepository.TryLoadRequest(conn, null, ticketId, out _, out List<ReturnRequestItem> pendingItems))
                 return;
 
-            foreach (DataRow row in dt.Rows)
+            foreach (var row in items)
             {
-                int deviceId = Convert.ToInt32(row["DeviceID"]);
-                int instanceId = row["InstanceID"] == DBNull.Value ? 0 : Convert.ToInt32(row["InstanceID"]);
+                int deviceId = row.DeviceID;
+                int instanceId = row.InstanceID;
                 ReturnRequestItem? pendingItem = pendingItems.FirstOrDefault(item =>
                     item.DeviceID == deviceId && (item.InstanceID == 0 || item.InstanceID == instanceId));
 
                 if (pendingItem != null)
                 {
-                    row["SL trả"] = pendingItem.ReturnQty;
+                    row.ReturnQty = pendingItem.ReturnQty;
                     if (!string.IsNullOrWhiteSpace(pendingItem.Note))
                     {
-                        if (dt.Columns.Contains("Tình trạng khi trả"))
-                            row["Tình trạng khi trả"] = pendingItem.Note;
-                        row["Ghi chú"] = pendingItem.Note;
+                        row.ReturnCondition = pendingItem.Note;
+                        row.Note = pendingItem.Note;
                     }
                 }
             }
@@ -177,15 +203,26 @@ namespace FrmProject.DAL
                 commandType: CommandType.StoredProcedure);
         }
 
-        public DataTable GetPendingReturnTickets()
+        public List<PendingReturnTicketModel> GetPendingReturnTickets()
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_GetPendingReturnTickets",
                 new { status = BorrowTicketStatus.ReturnPending },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new PendingReturnTicketModel
+                {
+                    TicketID = Convert.ToInt32(dict["TicketID"]),
+                    TicketCode = dict["Số phiếu"]?.ToString() ?? "",
+                    BorrowerName = dict["Người mượn"]?.ToString() ?? "",
+                    BorrowDate = dict["Ngày mượn"]?.ToString() ?? "",
+                    ExpectedReturnDate = dict["Hạn trả"]?.ToString() ?? "",
+                    Note = dict["Ghi chú"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
         public string GetTicketStatus(SqlConnection conn, SqlTransaction? tran, int ticketId)

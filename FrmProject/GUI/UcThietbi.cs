@@ -74,17 +74,30 @@ namespace FrmProject.GUI
                 if (_currentPage > _totalPages) _currentPage = _totalPages;
                 if (_currentPage < 1) _currentPage = 1;
 
-                DataTable dt = DeviceService.GetDevicesPaged(_currentPage, PageSize, _keyword, _loai, _trangThai);
+                var list = DeviceService.GetDevicesPaged(_currentPage, PageSize, _keyword, _loai, _trangThai);
 
                 dgvDevices.AutoGenerateColumns = true;
-                dgvDevices.DataSource = dt;
+                dgvDevices.DataSource = list;
 
                 if (dgvDevices.Columns.Contains("DeviceID"))
                     dgvDevices.Columns["DeviceID"].Visible = false;
-                if (dgvDevices.Columns.Contains("DeviceCode"))
-                    dgvDevices.Columns["DeviceCode"].Visible = false;
                 if (dgvDevices.Columns.Contains("AvailableQuantity"))
                     dgvDevices.Columns["AvailableQuantity"].Visible = false;
+
+                if (dgvDevices.Columns.Contains("DeviceCode"))
+                    dgvDevices.Columns["DeviceCode"].HeaderText = "Mã thiết bị";
+                if (dgvDevices.Columns.Contains("DeviceName"))
+                    dgvDevices.Columns["DeviceName"].HeaderText = "Tên thiết bị";
+                if (dgvDevices.Columns.Contains("CategoryName"))
+                    dgvDevices.Columns["CategoryName"].HeaderText = "Loại thiết bị";
+                if (dgvDevices.Columns.Contains("RoomName"))
+                    dgvDevices.Columns["RoomName"].HeaderText = "Vị trí";
+                if (dgvDevices.Columns.Contains("Status"))
+                    dgvDevices.Columns["Status"].HeaderText = "Tình trạng";
+                if (dgvDevices.Columns.Contains("TotalQuantity"))
+                    dgvDevices.Columns["TotalQuantity"].HeaderText = "Số lượng";
+                if (dgvDevices.Columns.Contains("Note"))
+                    dgvDevices.Columns["Note"].HeaderText = "Ghi chú";
 
                 lblPageInfo.Text = $"Trang {_currentPage}/{_totalPages}";
                 btnFirst.Enabled = _currentPage > 1;
@@ -109,16 +122,16 @@ namespace FrmProject.GUI
         {
             try
             {
-                DataTable dt = DeviceService.GetCategories();
+                var categories = DeviceService.GetCategories();
 
                 // ComboBox loại thiết bị trong form nhập
-                txtLoaiThietBi.Tag = dt; // Dùng combobox thay textbox6 nếu muốn, tạm dùng text
+                txtLoaiThietBi.Tag = categories; // Dùng combobox thay textbox6 nếu muốn, tạm dùng text
                 
                 // ComboBox tìm kiếm
                 comboBox1.Items.Clear();
                 comboBox1.Items.Add("-- Tất cả loại --");
-                foreach (DataRow row in dt.Rows)
-                    comboBox1.Items.Add(row["CategoryName"]?.ToString() ?? string.Empty);
+                foreach (var category in categories)
+                    comboBox1.Items.Add(category.CategoryName);
                 comboBox1.SelectedIndex = 0;
             }
             catch (Exception ex) { AppLogger.Error($"[UcThietbi] Lỗi LoadComboBoxLoai", ex); }
@@ -152,21 +165,21 @@ namespace FrmProject.GUI
             if (e.RowIndex < 0) return;
             var row = dgvDevices.Rows[e.RowIndex];
 
-            // Lấy DeviceID từ DataTable ẩn
-            if (dgvDevices.DataSource is DataTable dt)
+            // Lấy DeviceID từ DataSource
+            if (dgvDevices.DataSource is List<DeviceDisplayModel> list)
             {
-                var dataRow = dt.DefaultView[e.RowIndex].Row;
-                _selectedDeviceID = Convert.ToInt32(dataRow[Col.DeviceID]);
-                _selectedTotalQuantity = Convert.ToInt32(dataRow[Col.SoLuong]);
-                _selectedAvailableQuantity = Convert.ToInt32(dataRow[Col.AvailableQuantity]);
+                var item = list[e.RowIndex];
+                _selectedDeviceID = item.DeviceID;
+                _selectedTotalQuantity = item.TotalQuantity;
+                _selectedAvailableQuantity = item.AvailableQuantity;
 
-                txtMaThietBi.Text = dataRow[Col.MaThietBi]?.ToString();
-                txtTenThietBi.Text = dataRow[Col.TenThietBi]?.ToString();
-                txtViTri.Text = dataRow[Col.ViTri]?.ToString();
-                txtLoaiThietBi.Text = dataRow[Col.LoaiThietBi]?.ToString();
-                txtTinhTrang.Text = dataRow[Col.TinhTrang]?.ToString();
-                txtGhiChu.Text = dataRow[Col.GhiChu]?.ToString();
-                SetQuantityValue(Convert.ToDecimal(dataRow[Col.SoLuong]));
+                txtMaThietBi.Text = item.DeviceCode;
+                txtTenThietBi.Text = item.DeviceName;
+                txtViTri.Text = item.RoomName;
+                txtLoaiThietBi.Text = item.CategoryName;
+                txtTinhTrang.Text = item.Status;
+                txtGhiChu.Text = item.Note;
+                SetQuantityValue(item.TotalQuantity);
             }
         }
 

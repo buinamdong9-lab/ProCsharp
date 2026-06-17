@@ -80,6 +80,28 @@ namespace FrmProject
                     AppLogger.CloseAndFlush();
                     return;
                 }
+
+                var spUpgrader = DbUp.DeployChanges.To
+                    .SqlDatabase(connectionString)
+                    .WithScriptsEmbeddedInAssembly(
+                        System.Reflection.Assembly.GetExecutingAssembly(),
+                        name => name.Contains(".StoredProcedures."))
+                    .JournalTo(new DbUp.Helpers.NullJournal())
+                    .LogToConsole()
+                    .Build();
+
+                var spResult = spUpgrader.PerformUpgrade();
+                if (!spResult.Successful)
+                {
+                    AppLogger.Error("Database stored procedures deployment failed on startup", spResult.Error);
+                    MessageBox.Show(
+                        "Lỗi triển khai Stored Procedures:\n" + spResult.Error.Message + "\nChi tiết đã được ghi trong file log.",
+                        "Lỗi khởi động",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    AppLogger.CloseAndFlush();
+                    return;
+                }
             }
             catch (Exception ex)
             {

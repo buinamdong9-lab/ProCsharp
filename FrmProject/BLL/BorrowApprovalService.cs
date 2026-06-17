@@ -5,17 +5,10 @@ namespace FrmProject.BLL
     /// <summary>
     /// Shared service for approving/rejecting PENDING borrow tickets.
     /// </summary>
-    public class BorrowApprovalService : IBorrowApprovalService
+    public class BorrowApprovalService(IBorrowTicketRepository borrowTicketRepository) : IBorrowApprovalService
     {
-        private readonly IBorrowTicketRepository _borrowTicketRepository;
+        public void ApproveBorrow(int ticketId) => borrowTicketRepository.ApproveBorrow(ticketId);
 
-        public BorrowApprovalService(IBorrowTicketRepository borrowTicketRepository)
-        {
-            _borrowTicketRepository = borrowTicketRepository;
-        }
-
-        public void ApproveBorrow(int ticketId) => _borrowTicketRepository.ApproveBorrow(ticketId);
-
-        public void RejectBorrow(int ticketId, string reason) => _borrowTicketRepository.RejectBorrow(ticketId, reason);
+        public void RejectBorrow(int ticketId, string reason) => borrowTicketRepository.RejectBorrow(ticketId, reason);
     }
 }

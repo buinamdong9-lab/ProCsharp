@@ -10,7 +10,7 @@ BEGIN
            d.DeviceName AS [Tên thiết bị],
            (bd.Quantity - bd.ReturnedQuantity) AS [SL mượn],
            (bd.Quantity - bd.ReturnedQuantity) AS [SL trả],
-           ISNULL(NULLIF(di.Condition, ''), N'Tốt') AS [Tình trạng khi mượn],
+           N'Tốt' AS [Tình trạng khi mượn],
            N'Tốt' AS [Tình trạng khi trả],
            ISNULL(bd.Note, '') AS [Ghi chú]
     FROM BorrowDetails bd

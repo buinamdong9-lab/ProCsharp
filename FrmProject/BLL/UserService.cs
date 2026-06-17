@@ -1,28 +1,24 @@
-using System.Data;
+using System;
+using System.Collections.Generic;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class UserService : IUserService
+    public class UserService(IUserRepository userRepository) : IUserService
     {
-        private readonly IUserRepository _userRepository;
-
-        public UserService(IUserRepository userRepository)
-        {
-            _userRepository = userRepository;
-        }
-
         public int GetTotalUsersCount(string keyword, string role, string status) =>
-            _userRepository.GetTotalUsersCount(keyword, role, status);
+            userRepository.GetTotalUsersCount(keyword, role, status);
 
-        public DataTable GetUsersPaged(int pageNumber, int pageSize, string keyword, string role, string status) =>
-            _userRepository.GetUsersPaged(pageNumber, pageSize, keyword, role, status);
+        public List<UserDisplayModel> GetUsersPaged(int pageNumber, int pageSize, string keyword, string role, string status) =>
+            userRepository.GetUsersPaged(pageNumber, pageSize, keyword, role, status);
 
         public UserIdentity? FindUserIdentity(string code, string username) =>
-            _userRepository.FindUserIdentity(code, username);
+            userRepository.FindUserIdentity(code, username);
 
-        public string GenerateUserCode() => _userRepository.GenerateUserCode();
-        public void DeleteUser(int userId) => _userRepository.DeleteUser(userId);
+        public string GenerateUserCode() => userRepository.GenerateUserCode();
+        public void DeleteUser(int userId) => userRepository.DeleteUser(userId);
+
         public void SaveUser(UserEditModel user, bool isAdding)
         {
             if (user == null) throw new ArgumentNullException(nameof(user));
@@ -43,17 +39,19 @@ namespace FrmProject.BLL
 
             if (isAdding)
             {
-                var existing = _userRepository.FindUserIdentity("", user.Username);
+                var existing = userRepository.FindUserIdentity("", user.Username);
                 if (existing != null)
                     throw new InvalidOperationException($"Tên đăng nhập '{user.Username}' đã tồn tại trong hệ thống.");
             }
 
-            _userRepository.SaveUser(user, isAdding);
+            userRepository.SaveUser(user, isAdding);
         }
-        public void ResetPassword(int userId, string passwordHash) => _userRepository.ResetPassword(userId, passwordHash);
 
-        public DataTable GetAllUsers() => _userRepository.GetAllUsers();
-        public DataTable SearchUsers(string keyword, string role, string status) =>
-            _userRepository.SearchUsers(keyword, role, status);
+        public void ResetPassword(int userId, string passwordHash) => userRepository.ResetPassword(userId, passwordHash);
+
+        public List<UserDisplayModel> GetAllUsers() => userRepository.GetAllUsers();
+
+        public List<UserDisplayModel> SearchUsers(string keyword, string role, string status) =>
+            userRepository.SearchUsers(keyword, role, status);
     }
 }

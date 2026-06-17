@@ -83,6 +83,12 @@ namespace FrmProject.GUI
                 dgvInstances.DataSource = DeviceInstanceService.GetByDevice(_deviceID);
                 if (dgvInstances.Columns["InstanceID"] != null)
                     dgvInstances.Columns["InstanceID"].Visible = false;
+                if (dgvInstances.Columns["AssetCode"] != null)
+                    dgvInstances.Columns["AssetCode"].HeaderText = "Mã cá thể";
+                if (dgvInstances.Columns["Status"] != null)
+                    dgvInstances.Columns["Status"].HeaderText = "Trạng thái";
+                if (dgvInstances.Columns["Condition"] != null)
+                    dgvInstances.Columns["Condition"].HeaderText = "Tình trạng";
 
                 // Làm mới mã tiếp theo sau khi tải lại danh sách
                 RefreshNextCode();
@@ -195,7 +201,7 @@ namespace FrmProject.GUI
             if (dgvInstances.CurrentRow == null) return;
 
             int instanceId = (int)dgvInstances.CurrentRow.Cells["InstanceID"].Value;
-            string? maTS = dgvInstances.CurrentRow.Cells["Mã tài sản"].Value?.ToString();
+            string? maTS = dgvInstances.CurrentRow.Cells["AssetCode"].Value?.ToString();
 
             if (MessageBox.Show($"Bạn có chắc chắn xóa mềm cá thể [{maTS}]?\n\nMã tài sản sẽ chuyển sang trạng thái Ngừng sử dụng.", "Xác nhận",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
@@ -236,10 +242,10 @@ namespace FrmProject.GUI
                 return;
 
             _selectedInstanceId = instanceId;
-            txtAssetCode.Text = row.Cells["Mã tài sản"].Value?.ToString() ?? string.Empty;
-            txtCondition.Text = row.Cells["Tình trạng"].Value?.ToString() ?? string.Empty;
+            txtAssetCode.Text = row.Cells["AssetCode"].Value?.ToString() ?? string.Empty;
+            txtCondition.Text = row.Cells["Condition"].Value?.ToString() ?? string.Empty;
 
-            string status = row.Cells["Trạng thái"].Value?.ToString() ?? DeviceStatus.Available;
+            string status = row.Cells["Status"].Value?.ToString() ?? DeviceStatus.Available;
             int statusIndex = cmbStatus.FindStringExact(status);
             cmbStatus.SelectedIndex = statusIndex >= 0 ? statusIndex : 0;
 

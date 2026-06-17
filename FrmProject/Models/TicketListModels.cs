@@ -1,4 +1,5 @@
-using System.Data;
+using System;
+using System.Collections.Generic;
 
 namespace FrmProject.Models
 {
@@ -22,6 +23,15 @@ namespace FrmProject.Models
         public DateTime? ReturnDate { get; init; }
         public string StatusText { get; init; } = string.Empty;
         public int OverdueDays { get; init; }
-        public DataTable Items { get; init; } = new();
+        public List<TicketDetailItemModel> Items { get; init; } = new();
+    }
+
+    public sealed class TicketDetailItemModel
+    {
+        public string DeviceCode { get; set; } = string.Empty;
+        public string DeviceName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public string BorrowCondition { get; set; } = string.Empty;
+        public string ReturnCondition { get; set; } = string.Empty;
     }
 }

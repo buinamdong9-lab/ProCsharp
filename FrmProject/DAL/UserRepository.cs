@@ -1,22 +1,20 @@
-using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 using Dapper;
 using FrmProject.Models;
 
 namespace FrmProject.DAL
 {
-    /// <summary>
-    /// Renamed from UserDao → UserRepository for naming consistency.
-    /// All methods are now static, matching other Repository classes.
-    /// </summary>
     public class UserRepository : IUserRepository
     {
-        public DataTable GetAllUsers()
+        public List<UserDisplayModel> GetAllUsers()
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader("sp_GetAllUsers", commandType: CommandType.StoredProcedure));
-            return dt;
+            var rows = conn.Query("sp_GetAllUsers", commandType: CommandType.StoredProcedure);
+            return MapRowsToUsers(rows);
         }
 
         public UserIdentity? FindUserIdentity(string userCode, string username)
@@ -77,11 +75,10 @@ namespace FrmProject.DAL
                 commandType: CommandType.StoredProcedure);
         }
 
-        public DataTable SearchUsers(string keyword, string role, string status)
+        public List<UserDisplayModel> SearchUsers(string keyword, string role, string status)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_SearchUsers",
                 new
                 {
@@ -89,17 +86,16 @@ namespace FrmProject.DAL
                     role = string.IsNullOrWhiteSpace(role) ? null : role,
                     status = string.IsNullOrWhiteSpace(status) ? null : status
                 },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+            return MapRowsToUsers(rows);
         }
 
-        public DataTable GetUsersPaged(
+        public List<UserDisplayModel> GetUsersPaged(
             int pageNumber, int pageSize,
             string keyword = "", string role = "", string status = "")
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_GetUsersPaged",
                 new
                 {
@@ -109,8 +105,8 @@ namespace FrmProject.DAL
                     role = string.IsNullOrWhiteSpace(role) ? null : role,
                     status = string.IsNullOrWhiteSpace(status) ? null : status
                 },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+            return MapRowsToUsers(rows);
         }
 
         public int GetTotalUsersCount(
@@ -137,6 +133,24 @@ namespace FrmProject.DAL
                 new { name = roleName },
                 commandType: CommandType.StoredProcedure);
             return result != null ? Convert.ToInt32(result) : 1;
+        }
+
+        private static List<UserDisplayModel> MapRowsToUsers(IEnumerable<dynamic> rows)
+        {
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new UserDisplayModel
+                {
+                    UserCode = dict["Mã ND"]?.ToString() ?? (dict.TryGetValue("Mã số", out var ms) ? ms?.ToString() ?? "" : ""),
+                    FullName = dict["Họ tên"]?.ToString() ?? "",
+                    Email = dict["Email"]?.ToString() ?? "",
+                    Department = dict["Khoa/Bộ Môn"]?.ToString() ?? "",
+                    Role = dict["Vai trò"]?.ToString() ?? "",
+                    Phone = dict["Số điện thoại"]?.ToString() ?? "",
+                    BorrowingCount = Convert.ToInt32(dict["Đang mượn"]),
+                    Status = dict["Trạng thái"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
     }
 }

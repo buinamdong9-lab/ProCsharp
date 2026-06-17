@@ -1,4 +1,5 @@
-using System.Data;
+using System;
+using System.Collections.Generic;
 
 namespace FrmProject.Models
 {
@@ -10,6 +11,6 @@ namespace FrmProject.Models
         public DateTime ExpectedReturnDate { get; set; }
         public string Status { get; set; } = string.Empty;
         public string ReturnNote { get; set; } = string.Empty;
-        public DataTable Items { get; set; } = new();
+        public List<ReturnTicketItemModel> Items { get; set; } = new();
     }
 }

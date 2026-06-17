@@ -1,27 +1,20 @@
-using System.Data;
+using System;
+using System.Collections.Generic;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class RoomService : IRoomService
+    public class RoomService(IRoomRepository roomRepository, IDeviceRepository deviceRepository) : IRoomService
     {
-        private readonly IRoomRepository _roomRepository;
-        private readonly IDeviceRepository _deviceRepository;
-
-        public RoomService(IRoomRepository roomRepository, IDeviceRepository deviceRepository)
-        {
-            _roomRepository = roomRepository;
-            _deviceRepository = deviceRepository;
-        }
-
-        public DataTable GetAllRooms() => _roomRepository.GetAllRooms();
+        public List<RoomDisplayModel> GetAllRooms() => roomRepository.GetAllRooms();
 
         public (int RoomID, string Floor, string Capacity, string Note)? GetRoomByCode(string roomCode) =>
-            _roomRepository.GetRoomByCode(roomCode);
+            roomRepository.GetRoomByCode(roomCode);
 
-        public DataTable GetDevicesByRoom(string roomCode) => _deviceRepository.GetDevicesByRoom(roomCode);
+        public List<RoomDeviceModel> GetDevicesByRoom(string roomCode) => deviceRepository.GetDevicesByRoom(roomCode);
 
-        public void DeleteRoom(int roomId) => _roomRepository.DeleteRoom(roomId);
+        public void DeleteRoom(int roomId) => roomRepository.DeleteRoom(roomId);
 
         public void InsertRoom(string code, string name, string type, string floor, int capacity, string status, string note)
         {
@@ -33,11 +26,11 @@ namespace FrmProject.BLL
                 throw new ArgumentException("Sức chứa phải lớn hơn 0.");
 
             // Check if room code already exists on insert
-            var existing = _roomRepository.GetRoomByCode(code);
+            var existing = roomRepository.GetRoomByCode(code);
             if (existing != null)
                 throw new InvalidOperationException($"Mã phòng '{code}' đã tồn tại trong hệ thống.");
 
-            _roomRepository.InsertRoom(code, name, type, floor, capacity, status, note);
+            roomRepository.InsertRoom(code, name, type, floor, capacity, status, note);
         }
 
         public void UpdateRoom(int id, string code, string name, string type, string floor, int capacity, string status, string note)
@@ -49,10 +42,10 @@ namespace FrmProject.BLL
             if (capacity <= 0)
                 throw new ArgumentException("Sức chứa phải lớn hơn 0.");
 
-            _roomRepository.UpdateRoom(id, code, name, type, floor, capacity, status, note);
+            roomRepository.UpdateRoom(id, code, name, type, floor, capacity, status, note);
         }
 
-        public DataTable SearchRooms(string keyword, string type, string status) =>
-            _roomRepository.SearchRooms(keyword, type, status);
+        public List<RoomDisplayModel> SearchRooms(string keyword, string type, string status) =>
+            roomRepository.SearchRooms(keyword, type, status);
     }
 }

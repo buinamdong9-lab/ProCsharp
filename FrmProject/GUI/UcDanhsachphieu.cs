@@ -1,5 +1,8 @@
-using FrmProject.GUI;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using FrmProject.Models;
 
 namespace FrmProject.GUI
 {
@@ -171,7 +174,7 @@ namespace FrmProject.GUI
                 string keyword = txtTatCa128.Text.Trim();
                 string statusFilter = cmbDangMuon.Text;
 
-                DataTable dt = TicketListService.SearchTickets(
+                List<TicketHistoryModel> list = TicketListService.SearchTickets(
                     dtpTuNgay.Value.Date,
                     dtpDenNgay.Value.Date.AddDays(1),
                     keyword,
@@ -180,21 +183,21 @@ namespace FrmProject.GUI
                     _appRole);
 
                 dgvData.AutoGenerateColumns = false;
-                colTicketID.DataPropertyName = "ID phiếu";
-                colSoPhieu.DataPropertyName = "Số phiếu";
-                colNgayLap.DataPropertyName = "Ngày lập";
-                ColNguoimuon.DataPropertyName = "Người mượn";
-                colPhong.DataPropertyName = "Phòng";
-                colSoluong.DataPropertyName = "Số lượng";
-                colNgayMuon.DataPropertyName = "Ngày mượn";
-                colHanTra.DataPropertyName = "Hạn trả";
-                colNgaytra.DataPropertyName = "Ngày trả";
-                colTrangThai.DataPropertyName = "Trạng thái";
+                colTicketID.DataPropertyName = "TicketID";
+                colSoPhieu.DataPropertyName = "TicketCode";
+                colNgayLap.DataPropertyName = "CreatedDate";
+                ColNguoimuon.DataPropertyName = "BorrowerName";
+                colPhong.DataPropertyName = "RoomName";
+                colSoluong.DataPropertyName = "Quantity";
+                colNgayMuon.DataPropertyName = "BorrowDate";
+                colHanTra.DataPropertyName = "ExpectedReturnDate";
+                colNgaytra.DataPropertyName = "ReturnDate";
+                colTrangThai.DataPropertyName = "Status";
                 colThaoTac.DataPropertyName = "";
                 colThaoTac.HeaderText = "Thao tác";
                 colThaoTac.ReadOnly = true;
 
-                dgvData.DataSource = dt;
+                dgvData.DataSource = list;
                 ApplyGridTheme();
                 ForceGridTextColors();
                 ApplyActionColumn();
@@ -405,6 +408,7 @@ namespace FrmProject.GUI
                 : $"Phiếu đang chọn: {ticketLabel}";
             pnlActions.Visible = canProcess;
             btnPheDuyet.Visible = canProcess;
+            btnTuChoi.Visible = canProcess; // Bug fix: đồng bộ visibility với btnPheDuyet
 
             ShowBasicTicketDetail(row);
             LoadTicketDetail(_selectedTicketID);
@@ -708,11 +712,9 @@ namespace FrmProject.GUI
             ApplyTicketInfoGridTheme();
         }
 
-        private static int SumBorrowedQuantity(DataTable items)
+        private static int SumBorrowedQuantity(List<TicketDetailItemModel> items)
         {
-            string colName = items.Columns.Contains("OriginalQuantity") ? "OriginalQuantity" : "Số lượng";
-            return items.Rows.Cast<DataRow>()
-                .Sum(row => int.TryParse(Convert.ToString(row[colName]), out int quantity) ? quantity : 0);
+            return items.Sum(item => item.Quantity);
         }
 
         private void SetDetailStatus(string statusText)

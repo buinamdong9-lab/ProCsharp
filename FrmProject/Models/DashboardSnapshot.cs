@@ -1,4 +1,4 @@
-using System.Data;
+using System.Collections.Generic;
 
 namespace FrmProject.Models
 {
@@ -10,7 +10,7 @@ namespace FrmProject.Models
         public int IssueDevices { get; init; }
         public int ReturnedToday { get; init; }
         public int TotalBorrowingCount { get; init; }
-        public DataTable BorrowingList { get; init; } = new();
-        public DataTable MonthlyBorrowStats { get; init; } = new();
+        public List<DashboardBorrowingItemModel> BorrowingList { get; init; } = new();
+        public List<DashboardMonthlyStatsModel> MonthlyBorrowStats { get; init; } = new();
     }
 }

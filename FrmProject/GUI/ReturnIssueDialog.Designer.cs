@@ -88,7 +88,7 @@ namespace FrmProject.GUI
             // 
             // colAssetCode
             // 
-            colAssetCode.DataPropertyName = "Mã tài sản";
+            colAssetCode.DataPropertyName = "AssetCode";
             colAssetCode.HeaderText = "Mã tài sản";
             colAssetCode.Name = "colAssetCode";
             colAssetCode.ReadOnly = true;
@@ -96,7 +96,7 @@ namespace FrmProject.GUI
             // 
             // colDeviceName
             // 
-            colDeviceName.DataPropertyName = "Tên thiết bị";
+            colDeviceName.DataPropertyName = "DeviceName";
             colDeviceName.HeaderText = "Tên thiết bị";
             colDeviceName.Name = "colDeviceName";
             colDeviceName.ReadOnly = true;
@@ -104,7 +104,7 @@ namespace FrmProject.GUI
             // 
             // colBorrowQty
             // 
-            colBorrowQty.DataPropertyName = "SL mượn";
+            colBorrowQty.DataPropertyName = "BorrowQty";
             colBorrowQty.HeaderText = "SL mượn";
             colBorrowQty.Name = "colBorrowQty";
             colBorrowQty.ReadOnly = true;
@@ -112,7 +112,7 @@ namespace FrmProject.GUI
             // 
             // colReturnQty
             // 
-            colReturnQty.DataPropertyName = "SL trả";
+            colReturnQty.DataPropertyName = "ReturnQty";
             colReturnQty.HeaderText = "SL trả";
             colReturnQty.Name = "colReturnQty";
             colReturnQty.ReadOnly = false;
@@ -120,7 +120,7 @@ namespace FrmProject.GUI
             // 
             // colBorrowCondition
             // 
-            colBorrowCondition.DataPropertyName = "Tình trạng khi mượn";
+            colBorrowCondition.DataPropertyName = "BorrowCondition";
             colBorrowCondition.HeaderText = "Tình trạng khi mượn";
             colBorrowCondition.Name = "colBorrowCondition";
             colBorrowCondition.ReadOnly = true;
@@ -128,7 +128,7 @@ namespace FrmProject.GUI
             // 
             // colReturnCondition
             // 
-            colReturnCondition.DataPropertyName = "Tình trạng khi trả";
+            colReturnCondition.DataPropertyName = "ReturnCondition";
             colReturnCondition.HeaderText = "Tình trạng khi trả";
             colReturnCondition.Name = "colReturnCondition";
             colReturnCondition.ReadOnly = false;
@@ -145,7 +145,7 @@ namespace FrmProject.GUI
             // 
             // colNote
             // 
-            colNote.DataPropertyName = "Ghi chú";
+            colNote.DataPropertyName = "Note";
             colNote.HeaderText = "Ghi chú";
             colNote.Name = "colNote";
             colNote.ReadOnly = false;

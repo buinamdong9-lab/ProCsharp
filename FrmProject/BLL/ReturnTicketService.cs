@@ -1,30 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class ReturnTicketService : IReturnTicketService
+    public class ReturnTicketService(IReturnTicketRepository returnTicketRepository) : IReturnTicketService
     {
-        private readonly IReturnTicketRepository _returnTicketRepository;
-
-        public ReturnTicketService(IReturnTicketRepository returnTicketRepository)
-        {
-            _returnTicketRepository = returnTicketRepository;
-        }
-
         public List<LookupItem> SearchBorrowingTickets(int currentUserId, AppRole appRole, string keyword = "") =>
-            _returnTicketRepository.SearchBorrowingTickets(currentUserId, appRole, keyword);
+            returnTicketRepository.SearchBorrowingTickets(currentUserId, appRole, keyword);
 
         public ReturnTicketDetails? GetTicketDetails(int ticketId) =>
-            _returnTicketRepository.GetTicketDetails(ticketId);
+            returnTicketRepository.GetTicketDetails(ticketId);
 
-        public void ApplyPendingReturnQuantities(int ticketId, DataTable dt) =>
-            _returnTicketRepository.ApplyPendingReturnQuantities(ticketId, dt);
+        public void ApplyPendingReturnQuantities(int ticketId, List<ReturnTicketItemModel> items) =>
+            returnTicketRepository.ApplyPendingReturnQuantities(ticketId, items);
 
         public bool TryLoadPendingReturnRequest(int ticketId, out DateTime requestedAt, out List<ReturnRequestItem> pendingItems) =>
-            _returnTicketRepository.TryLoadPendingReturnRequest(ticketId, out requestedAt, out pendingItems);
+            returnTicketRepository.TryLoadPendingReturnRequest(ticketId, out requestedAt, out pendingItems);
 
         public void SubmitReturnRequest(
             int ticketId,
@@ -38,18 +31,30 @@ namespace FrmProject.BLL
                 throw new ArgumentException("Mã phiếu mượn không hợp lệ.");
             if (currentUserId <= 0)
                 throw new ArgumentException("Mã người dùng không hợp lệ.");
-            if (returnItems == null || returnItems.Count == 0)
-                throw new ArgumentException("Danh sách thiết bị trả không được trống.");
-
+            bool hasValidItem = false;
             foreach (var item in returnItems)
             {
-                if (item.ReturnQty <= 0)
-                    throw new ArgumentException("Số lượng trả phải lớn hơn 0.");
+                if (item.ReturnQty < 0)
+                    throw new ArgumentException("Số lượng trả không được nhỏ hơn 0.");
                 if (item.ReturnQty > item.BorrowQty)
                     throw new ArgumentException("Số lượng trả không được lớn hơn số lượng đang mượn.");
+
+                bool isReturned = item.ReturnQty > 0;
+                // Bug fix: isReportedIssue chỉ cần tình trạng xấu (bao gồm cả mất hoàn toàn ReturnQty=0)
+                bool isGoodCondition = string.IsNullOrWhiteSpace(item.Note) ||
+                                       item.Note.StartsWith("Tốt", StringComparison.OrdinalIgnoreCase);
+                bool isReportedIssue = !isGoodCondition;
+
+                if (isReturned || isReportedIssue)
+                {
+                    hasValidItem = true;
+                }
             }
 
-            _returnTicketRepository.SubmitReturnRequest(ticketId, currentUserId, appRole, requestedAt, returnItems, requestNote);
+            if (!hasValidItem)
+                throw new ArgumentException("Cần nhập ít nhất một thiết bị được trả hoặc báo lỗi/mất.");
+
+            returnTicketRepository.SubmitReturnRequest(ticketId, currentUserId, appRole, requestedAt, returnItems, requestNote);
         }
     }
 }

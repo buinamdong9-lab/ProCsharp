@@ -29,6 +29,7 @@ BEGIN
         JOIN BorrowTickets ticket ON ticket.TicketID = existing.TicketID
         WHERE existing.InstanceID = @instanceID
           AND ticket.Status IN (@pendingStatus, @borrowingStatus, @returnPendingStatus)
+          AND existing.Quantity > existing.ReturnedQuantity
       );
 
     SELECT @@ROWCOUNT;

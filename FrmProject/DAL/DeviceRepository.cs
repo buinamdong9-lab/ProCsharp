@@ -1,19 +1,34 @@
-using FrmProject.Models;
-using FrmProject.GUI;
-using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 using Dapper;
+using FrmProject.Models;
 
 namespace FrmProject.DAL
 {
     public class DeviceRepository : IDeviceRepository
     {
-        public DataTable GetAllDevices()
+        public List<DeviceDisplayModel> GetAllDevices()
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader("sp_GetAllDevices", commandType: CommandType.StoredProcedure));
-            return dt;
+            var rows = conn.Query("sp_GetAllDevices", commandType: CommandType.StoredProcedure);
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new DeviceDisplayModel
+                {
+                    DeviceID = Convert.ToInt32(dict["DeviceID"]),
+                    DeviceCode = dict["DeviceCode"]?.ToString() ?? "",
+                    DeviceName = dict["Tên thiết bị"]?.ToString() ?? "",
+                    CategoryName = dict["Loại thiết bị"]?.ToString() ?? "",
+                    RoomName = dict["Vị trí"]?.ToString() ?? "",
+                    Status = dict["Tình trạng"]?.ToString() ?? "",
+                    TotalQuantity = Convert.ToInt32(dict["Số lượng"]),
+                    AvailableQuantity = Convert.ToInt32(dict["AvailableQuantity"]),
+                    Note = dict["Ghi chú"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
         public int GetTotalDevicesCount(string keyword = "", string categoryName = "", string status = "")
@@ -30,11 +45,10 @@ namespace FrmProject.DAL
                 commandType: CommandType.StoredProcedure);
         }
 
-        public DataTable GetDevicesPaged(int pageNumber, int pageSize, string keyword = "", string categoryName = "", string status = "")
+        public List<DeviceDisplayModel> GetDevicesPaged(int pageNumber, int pageSize, string keyword = "", string categoryName = "", string status = "")
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_GetDevicesPaged",
                 new
                 {
@@ -44,16 +58,29 @@ namespace FrmProject.DAL
                     categoryName = string.IsNullOrWhiteSpace(categoryName) ? null : categoryName,
                     status = string.IsNullOrWhiteSpace(status) ? null : status
                 },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new DeviceDisplayModel
+                {
+                    DeviceID = Convert.ToInt32(dict["DeviceID"]),
+                    DeviceCode = dict["DeviceCode"]?.ToString() ?? "",
+                    DeviceName = dict["Tên thiết bị"]?.ToString() ?? "",
+                    CategoryName = dict["Loại thiết bị"]?.ToString() ?? "",
+                    RoomName = dict["Vị trí"]?.ToString() ?? "",
+                    Status = dict["Tình trạng"]?.ToString() ?? "",
+                    TotalQuantity = Convert.ToInt32(dict["Số lượng"]),
+                    AvailableQuantity = Convert.ToInt32(dict["AvailableQuantity"]),
+                    Note = dict["Ghi chú"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
-        public DataTable GetCategories()
+        public List<CategoryModel> GetCategories()
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader("sp_GetCategories", commandType: CommandType.StoredProcedure));
-            return dt;
+            return conn.Query<CategoryModel>("sp_GetCategories", commandType: CommandType.StoredProcedure).ToList();
         }
 
         public void SaveDevice(
@@ -125,19 +152,28 @@ namespace FrmProject.DAL
                 commandType: CommandType.StoredProcedure).ToList();
         }
 
-        public DataTable GetDevicesByRoom(string roomCode)
+        public List<RoomDeviceModel> GetDevicesByRoom(string roomCode)
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_GetDevicesByRoom",
                 new
                 {
                     roomCode,
                     retiredStatus = DeviceStatus.Retired
                 },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new RoomDeviceModel
+                {
+                    DeviceCode = dict["Mã TB"]?.ToString() ?? "",
+                    DeviceName = dict["Tên thiết bị"]?.ToString() ?? "",
+                    Quantity = Convert.ToInt32(dict["SL"]),
+                    Status = dict["Tình trạng"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
     }
 }

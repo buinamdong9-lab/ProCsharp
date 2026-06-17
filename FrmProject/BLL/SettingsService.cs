@@ -1,39 +1,33 @@
-using System.Data;
+using System.Collections.Generic;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class SettingsService : ISettingsService
+    public class SettingsService(ISettingsRepository settingsRepository) : ISettingsService
     {
-        private readonly ISettingsRepository _settingsRepository;
-
-        public SettingsService(ISettingsRepository settingsRepository)
-        {
-            _settingsRepository = settingsRepository;
-        }
-
-        public void ValidateSchema() => _settingsRepository.EnsureAppSettingsTable();
+        public void ValidateSchema() => settingsRepository.EnsureAppSettingsTable();
         public void EnsureAppSettingsTable() => ValidateSchema();
 
         public string GetValue(string key, string defaultValue = "") =>
-            _settingsRepository.GetValue(key, defaultValue);
+            settingsRepository.GetValue(key, defaultValue);
 
         public int GetIntValue(string key, int defaultValue) =>
-            _settingsRepository.GetIntValue(key, defaultValue);
+            settingsRepository.GetIntValue(key, defaultValue);
 
         public bool GetYesNoValue(string key, bool defaultValue) =>
-            _settingsRepository.GetYesNoValue(key, defaultValue);
+            settingsRepository.GetYesNoValue(key, defaultValue);
 
         public void SaveValues(IReadOnlyDictionary<string, string> settings) =>
-            _settingsRepository.SaveValues(settings);
+            settingsRepository.SaveValues(settings);
 
-        public DataTable GetDeviceCategories() =>
-            _settingsRepository.GetDeviceCategories();
+        public List<DeviceCategoryStatsModel> GetDeviceCategories() =>
+            settingsRepository.GetDeviceCategories();
 
-        public DataTable GetRoles() =>
-            _settingsRepository.GetRoles();
+        public List<RoleStatsModel> GetRoles() =>
+            settingsRepository.GetRoles();
 
         public void AddDeviceCategory(string categoryName) =>
-            _settingsRepository.AddDeviceCategory(categoryName);
+            settingsRepository.AddDeviceCategory(categoryName);
     }
 }

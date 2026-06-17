@@ -1,6 +1,7 @@
-using FrmProject.GUI;
+using System.Collections.Generic;
 using System.Data;
 using OfficeOpenXml;
+using FrmProject.Models;
 
 namespace FrmProject.GUI
 {
@@ -84,9 +85,18 @@ namespace FrmProject.GUI
 
         private void LoadMonthlyStats(DateTime from, DateTime to)
         {
-            DataTable dt = ReportService.GetMonthlyStats(from, to);
-            dgvData.DataSource = dt;
+            List<MonthlyStatsModel> list = ReportService.GetMonthlyStats(from, to);
+            dgvData.DataSource = list;
             dgvData.AutoGenerateColumns = true;
+
+            if (dgvData.Columns.Count > 0)
+            {
+                dgvData.Columns["Month"].HeaderText = "Tháng";
+                dgvData.Columns["TicketCount"].HeaderText = "Số phiếu mượn";
+                dgvData.Columns["TotalBorrowedQty"].HeaderText = "Tổng SL mượn";
+                dgvData.Columns["ReturnedQty"].HeaderText = "Đã trả";
+                dgvData.Columns["OverdueQty"].HeaderText = "Quá hạn";
+            }
 
             // Summary row
             lblThongKeMuonTra.Text = $"📊  Thống kê mượn trả theo tháng ({from.Year})";
@@ -94,29 +104,29 @@ namespace FrmProject.GUI
 
         private void LoadTopDevices(DateTime from, DateTime to)
         {
-            DataTable dt = ReportService.GetTopDevices(from, to);
+            List<TopDeviceModel> list = ReportService.GetTopDevices(from, to);
 
             dgvData2.AutoGenerateColumns = false;
-            colHang.DataPropertyName = "Hạng";
-            colThietBi.DataPropertyName = "Thiết bị";
-            colLuotMuon.DataPropertyName = "Lượt mượn";
-            colTiLe.DataPropertyName = "Tỉ lệ";
-            dgvData2.DataSource = dt;
+            colHang.DataPropertyName = "Rank";
+            colThietBi.DataPropertyName = "DeviceName";
+            colLuotMuon.DataPropertyName = "BorrowCount";
+            colTiLe.DataPropertyName = "Ratio";
+            dgvData2.DataSource = list;
         }
 
         private void LoadOverdueTickets(DateTime from, DateTime to)
         {
-            DataTable dt = ReportService.GetOverdueTickets(from, to);
+            List<OverdueTicketModel> list = ReportService.GetOverdueTickets(from, to);
 
             dgvData4.AutoGenerateColumns = false;
-            colSoPhieu.DataPropertyName = "Số phiếu";
-            colNguoiMuon.DataPropertyName = "Người mượn";
-            colPhong.DataPropertyName = "Phòng";
-            colNgayMuon.DataPropertyName = "Ngày mượn";
-            colHanTra.DataPropertyName = "Hạn trả";
-            colSoNgayQua.DataPropertyName = "Số ngày quá hạn";
-            colTinhTrang.DataPropertyName = "Tình trạng";
-            dgvData4.DataSource = dt;
+            colSoPhieu.DataPropertyName = "TicketCode";
+            colNguoiMuon.DataPropertyName = "BorrowerName";
+            colPhong.DataPropertyName = "RoomName";
+            colNgayMuon.DataPropertyName = "BorrowDate";
+            colHanTra.DataPropertyName = "ExpectedReturnDate";
+            colSoNgayQua.DataPropertyName = "OverdueDays";
+            colTinhTrang.DataPropertyName = "Status";
+            dgvData4.DataSource = list;
         }
 
         private void BtnXuatExcel_Click(object sender, EventArgs e)
@@ -128,7 +138,12 @@ namespace FrmProject.GUI
                 {
                     try
                     {
-                        using (ExcelPackage package = new ExcelPackage(new System.IO.FileInfo(sfd.FileName)))
+                        var fileInfo = new System.IO.FileInfo(sfd.FileName);
+                        if (fileInfo.Exists)
+                        {
+                            fileInfo.Delete();
+                        }
+                        using (ExcelPackage package = new ExcelPackage(fileInfo))
                         {
                             // Hàm phụ giúp xuất DataGridView ra sheet
                             void ExportGridToSheet(DataGridView dgv, string sheetName)

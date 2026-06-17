@@ -1,7 +1,10 @@
-using Microsoft.Data.SqlClient;
-using System.Data;
+using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 using Dapper;
+using FrmProject.Models;
 
 namespace FrmProject.DAL
 {
@@ -46,20 +49,35 @@ namespace FrmProject.DAL
                 SaveValue(conn, setting.Key, setting.Value);
         }
 
-        public DataTable GetDeviceCategories()
+        public List<DeviceCategoryStatsModel> GetDeviceCategories()
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader("sp_GetDeviceCategories", commandType: CommandType.StoredProcedure));
-            return dt;
+            var rows = conn.Query("sp_GetDeviceCategories", commandType: CommandType.StoredProcedure);
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new DeviceCategoryStatsModel
+                {
+                    CategoryID = Convert.ToInt32(dict["Mã loại"]),
+                    CategoryName = dict["Tên loại"]?.ToString() ?? "",
+                    DeviceCount = Convert.ToInt32(dict["Số thiết bị"]),
+                    Action = dict["Thao tác"]?.ToString() ?? ""
+                };
+            }).ToList();
         }
 
-        public DataTable GetRoles()
+        public List<RoleStatsModel> GetRoles()
         {
             using SqlConnection conn = DbHelper.GetConnection();
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader("sp_GetRoles", commandType: CommandType.StoredProcedure));
-            return dt;
+            var rows = conn.Query("sp_GetRoles", commandType: CommandType.StoredProcedure);
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new RoleStatsModel
+                {
+                    RoleID = Convert.ToInt32(dict["Mã vai trò"]),
+                    RoleName = dict["Tên vai trò"]?.ToString() ?? "",
+                    UserCount = Convert.ToInt32(dict["Số người dùng"])
+                };
+            }).ToList();
         }
 
         public void AddDeviceCategory(string categoryName)

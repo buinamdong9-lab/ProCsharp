@@ -1,24 +1,18 @@
-using System.Data;
+using System.Collections.Generic;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class RecycleBinService : IRecycleBinService
+    public class RecycleBinService(IRecycleBinRepository recycleBinRepository) : IRecycleBinService
     {
-        private readonly IRecycleBinRepository _recycleBinRepository;
-
-        public RecycleBinService(IRecycleBinRepository recycleBinRepository)
-        {
-            _recycleBinRepository = recycleBinRepository;
-        }
-
-        public DataTable Load(string itemType, string keyword) =>
-            _recycleBinRepository.Load(itemType, keyword);
+        public List<RecycleBinItemModel> Load(string itemType, string keyword) =>
+            recycleBinRepository.Load(itemType, keyword);
 
         public void Restore(string itemType, int id) =>
-            _recycleBinRepository.Restore(itemType, id);
+            recycleBinRepository.Restore(itemType, id);
 
         public void DeleteForever(string itemType, int id) =>
-            _recycleBinRepository.DeleteForever(itemType, id);
+            recycleBinRepository.DeleteForever(itemType, id);
     }
 }

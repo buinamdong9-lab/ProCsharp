@@ -1,5 +1,8 @@
-using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 using Dapper;
 using FrmProject.Models;
 
@@ -46,32 +49,50 @@ namespace FrmProject.DAL
             };
         }
 
-        public DataTable LoadBorrowingListOnly(int pageNumber, int pageSize)
+        public List<DashboardBorrowingItemModel> LoadBorrowingListOnly(int pageNumber, int pageSize)
         {
             using SqlConnection conn = DbHelper.GetConnection();
             conn.Open();
             return LoadBorrowingList(conn, pageNumber, pageSize);
         }
 
-        private static DataTable LoadBorrowingList(SqlConnection conn, int pageNumber, int pageSize)
+        private static List<DashboardBorrowingItemModel> LoadBorrowingList(SqlConnection conn, int pageNumber, int pageSize)
         {
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader(
+            var rows = conn.Query(
                 "sp_LoadDashboardBorrowingList",
                 new
                 {
                     offset = (pageNumber - 1) * pageSize,
                     limit = pageSize
                 },
-                commandType: CommandType.StoredProcedure));
-            return dt;
+                commandType: CommandType.StoredProcedure);
+
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new DashboardBorrowingItemModel
+                {
+                    DeviceCode = dict["Mã TB"]?.ToString() ?? "",
+                    DeviceName = dict["Tên Thiết Bị"]?.ToString() ?? "",
+                    Quantity = Convert.ToInt32(dict["Số lượng"]),
+                    BorrowerName = dict["Người mượn"]?.ToString() ?? "",
+                    BorrowDate = Convert.ToDateTime(dict["Ngày Mượn"]),
+                    ExpectedReturnDate = Convert.ToDateTime(dict["Hạn Trả"])
+                };
+            }).ToList();
         }
 
-        private static DataTable LoadMonthlyBorrowStats(SqlConnection conn)
+        private static List<DashboardMonthlyStatsModel> LoadMonthlyBorrowStats(SqlConnection conn)
         {
-            DataTable dt = new DataTable();
-            dt.Load(conn.ExecuteReader("sp_LoadDashboardMonthlyStats", commandType: CommandType.StoredProcedure));
-            return dt;
+            var rows = conn.Query("sp_LoadDashboardMonthlyStats", commandType: CommandType.StoredProcedure);
+            return rows.Select(row => {
+                var dict = (IDictionary<string, object>)row;
+                return new DashboardMonthlyStatsModel
+                {
+                    Month = dict["Tháng"]?.ToString() ?? "",
+                    TicketCount = Convert.ToInt32(dict["Số phiếu"]),
+                    DeviceCount = Convert.ToInt32(dict["Số thiết bị"])
+                };
+            }).ToList();
         }
     }
 }

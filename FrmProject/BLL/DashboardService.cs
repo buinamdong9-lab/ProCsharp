@@ -1,21 +1,15 @@
-using System.Data;
+using System.Collections.Generic;
 using FrmProject.DAL;
+using FrmProject.Models;
 
 namespace FrmProject.BLL
 {
-    public class DashboardService : IDashboardService
+    public class DashboardService(IDashboardRepository dashboardRepository) : IDashboardService
     {
-        private readonly IDashboardRepository _dashboardRepository;
-
-        public DashboardService(IDashboardRepository dashboardRepository)
-        {
-            _dashboardRepository = dashboardRepository;
-        }
-
         public DashboardSnapshot Load(int pageNumber, int pageSize) =>
-            _dashboardRepository.Load(pageNumber, pageSize);
+            dashboardRepository.Load(pageNumber, pageSize);
 
-        public DataTable LoadBorrowingListOnly(int pageNumber, int pageSize) =>
-            _dashboardRepository.LoadBorrowingListOnly(pageNumber, pageSize);
+        public List<DashboardBorrowingItemModel> LoadBorrowingListOnly(int pageNumber, int pageSize) =>
+            dashboardRepository.LoadBorrowingListOnly(pageNumber, pageSize);
     }
 }

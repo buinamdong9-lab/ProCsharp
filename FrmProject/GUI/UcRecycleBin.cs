@@ -30,10 +30,10 @@ namespace FrmProject.GUI
             {
                 string itemType = cboLoai.Text;
                 string keyword = txtTimKiem.Text.Trim();
-                DataTable table = RecycleBinService.Load(itemType, keyword);
-                dgvRecycleBin.DataSource = table;
+                var items = RecycleBinService.Load(itemType, keyword);
+                dgvRecycleBin.DataSource = items;
                 ConfigureGrid();
-                lblTong.Text = $"Tổng: {table.Rows.Count}";
+                lblTong.Text = $"Tổng: {items.Count}";
             }
             catch (Exception ex)
             {
@@ -48,15 +48,33 @@ namespace FrmProject.GUI
             {
                 dgvRecycleBin.Columns["ID"].Width = 70;
                 dgvRecycleBin.Columns["ID"].FillWeight = 45;
+                dgvRecycleBin.Columns["ID"].HeaderText = "Mã ID";
             }
-            if (dgvRecycleBin.Columns.Contains("Loại"))
-                dgvRecycleBin.Columns["Loại"].FillWeight = 85;
-            if (dgvRecycleBin.Columns.Contains("Mã"))
-                dgvRecycleBin.Columns["Mã"].FillWeight = 90;
-            if (dgvRecycleBin.Columns.Contains("Tên"))
-                dgvRecycleBin.Columns["Tên"].FillWeight = 160;
-            if (dgvRecycleBin.Columns.Contains("Ghi chú"))
-                dgvRecycleBin.Columns["Ghi chú"].FillWeight = 220;
+            if (dgvRecycleBin.Columns.Contains("ItemType"))
+            {
+                dgvRecycleBin.Columns["ItemType"].FillWeight = 85;
+                dgvRecycleBin.Columns["ItemType"].HeaderText = "Loại";
+            }
+            if (dgvRecycleBin.Columns.Contains("Code"))
+            {
+                dgvRecycleBin.Columns["Code"].FillWeight = 90;
+                dgvRecycleBin.Columns["Code"].HeaderText = "Mã";
+            }
+            if (dgvRecycleBin.Columns.Contains("Name"))
+            {
+                dgvRecycleBin.Columns["Name"].FillWeight = 160;
+                dgvRecycleBin.Columns["Name"].HeaderText = "Tên";
+            }
+            if (dgvRecycleBin.Columns.Contains("Status"))
+            {
+                dgvRecycleBin.Columns["Status"].FillWeight = 100;
+                dgvRecycleBin.Columns["Status"].HeaderText = "Trạng thái";
+            }
+            if (dgvRecycleBin.Columns.Contains("Note"))
+            {
+                dgvRecycleBin.Columns["Note"].FillWeight = 220;
+                dgvRecycleBin.Columns["Note"].HeaderText = "Ghi chú";
+            }
         }
 
         private void BtnKhoiPhuc_Click(object? sender, EventArgs e)
@@ -117,8 +135,8 @@ namespace FrmProject.GUI
                 return false;
             }
 
-            itemType = dgvRecycleBin.CurrentRow.Cells["Loại"].Value?.ToString() ?? string.Empty;
-            itemName = dgvRecycleBin.CurrentRow.Cells["Tên"].Value?.ToString() ?? string.Empty;
+            itemType = dgvRecycleBin.CurrentRow.Cells["ItemType"].Value?.ToString() ?? string.Empty;
+            itemName = dgvRecycleBin.CurrentRow.Cells["Name"].Value?.ToString() ?? string.Empty;
             object? idValue = dgvRecycleBin.CurrentRow.Cells["ID"].Value;
             if (string.IsNullOrWhiteSpace(itemType) || idValue == null || !int.TryParse(idValue.ToString(), out itemId))
             {
